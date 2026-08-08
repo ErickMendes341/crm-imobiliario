@@ -9,8 +9,9 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 st.set_page_config(page_title="Painel do Corretor", page_icon="🏠", layout="wide")
 st.title("🏠 Sistema Integrado - CRM & Match Imobiliário")
 
-aba1, aba2, aba3 = st.tabs(["📝 Novo Imóvel", "👤 Novo Lead", "🎯 Encontrar Matches"])
+aba1, aba2, aba3, aba4 = st.tabs(["📝 Novo Imóvel", "📋 Ver Imóveis", "👤 Novo Lead", "🎯 Encontrar Matches"])
 
+# --- ABA 1: CADASTRAR IMÓVEL ---
 with aba1:
     st.subheader("Cadastrar Imóvel")
     codigo = st.text_input("Código do Imóvel", "CA-002")
@@ -43,7 +44,32 @@ with aba1:
         supabase.table("imoveis").insert(dados_imovel).execute()
         st.success(f"✅ Imóvel {codigo} cadastrado com sucesso!")
 
+# --- ABA 2: VISUALIZAR IMÓVEIS ---
 with aba2:
+    st.subheader("Imóveis Cadastrados")
+    if st.button("🔄 Atualizar Lista de Imóveis"):
+        imoveis = supabase.table("imoveis").select("*").execute().data
+        if imoveis:
+            for imovel in imoveis:
+                col1, col2 = st.columns([1, 2])
+                with col1:
+                    fotos_urls = imovel.get("fotos_urls")
+                    if fotos_urls and len(fotos_urls) > 0:
+                        st.image(fotos_urls[0], use_container_width=True)
+                    else:
+                        st.info("Sem foto cadastrada")
+                with col2:
+                    st.markdown(f"### {imovel.get('tipo')} - Código: **{imovel.get('codigo_imovel')}**")
+                    st.write(f"📍 **Bairro:** {imovel.get('bairro')}")
+                    st.write(f"💰 **Valor:** R$ {imovel.get('valor_venda', 0):,.2f}")
+                    st.write(f"🛏️ **Quartos:** {imovel.get('quartos')}")
+                    st.write(f"📝 **Descrição:** {imovel.get('descricao', 'Sem descrição')}")
+                st.divider()
+        else:
+            st.info("Nenhum imóvel cadastrado ainda.")
+
+# --- ABA 3: CADASTRAR LEAD ---
+with aba3:
     st.subheader("Cadastrar Lead / Cliente")
     nome = st.text_input("Nome do Cliente")
     whatsapp = st.text_input("WhatsApp (com DDD)", "+5511999999999")
@@ -62,9 +88,10 @@ with aba2:
         supabase.table("leads").insert(dados_lead).execute()
         st.success(f"✅ Lead {nome} cadastrado com sucesso!")
 
-with aba3:
+# --- ABA 4: MATCH INTELIGENTE ---
+with aba4:
     st.subheader("Cruzar Leads e Imóveis (Match Inteligente)")
-    if st.button("🔄 Atualizar / Rodar Match"):
+    if st.button("🔄 Rodar Match"):
         leads = supabase.table("leads").select("*").execute().data
         imoveis = supabase.table("imoveis").select("*").execute().data
         
