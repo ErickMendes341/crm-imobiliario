@@ -96,7 +96,6 @@ if menu == "📊 Dashboard":
         imoveis_vendidos = len(imoveis_data) - len(imoveis_disponiveis)
         st.metric(label="✅ Imóveis Vendidos", value=imoveis_vendidos)
     with col4:
-        # Cálculo de matches para leads ativos com imóveis disponíveis
         total_matches = 0
         for lead in leads_ativos:
             orc = lead.get('orcamento_maximo', 0)
@@ -145,7 +144,6 @@ elif menu == "📋 Imóveis Cadastrados":
                     st.write(f"📍 **Bairro:** {imovel.get('bairro')} | 🛏️ **Quartos:** {imovel.get('quartos')}")
                     st.write(f"📝 {imovel.get('descricao', 'Sem descrição.')}")
                     
-                    # Alterar Status
                     novo_status = st.radio(
                         "Status do Imóvel:",
                         ["Disponível", "Vendido"],
@@ -256,7 +254,6 @@ elif menu == "🎯 Encontrar Matches":
             
             st.subheader(f"👤 Cliente: {lead.get('nome', 'Sem nome')}")
             
-            # Atualizar Status do Lead
             novo_status_lead = st.radio(
                 "Status do Cliente:",
                 ["Em busca", "Já comprou"],
@@ -282,7 +279,6 @@ elif menu == "🎯 Encontrar Matches":
             
             st.caption(f"💰 Orçamento Máx: **R$ {orcamento:,.2f}** | 📍 Bairro: **{', '.join(bairros)}** | 🛏️ Mín. Quartos: **{quartos_min}**")
             
-            # Filtra somente imóveis que estão Disponíveis
             imoveis_disponiveis = [i for i in imoveis_data if i.get('status', 'Disponível') == 'Disponível']
             
             matches = []
