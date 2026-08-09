@@ -32,7 +32,7 @@ def carregar_leads():
 def gerar_codigo_imovel_auto():
     imoveis = carregar_imoveis()
     proximo_num = len(imoveis) + 1
-    return f"IMO-{proximo_num:03d}"  # Exemplo: IMO-001, IMO-002, etc.
+    return f"IMO-{proximo_num:03d}"
 
 # --- ESTILIZAÇÃO CSS CUSTOMIZADA ---
 st.markdown("""
@@ -53,6 +53,16 @@ st.markdown("""
         border-radius: 20px;
         font-weight: bold;
         font-size: 0.9em;
+    }
+    .feature-tag {
+        background-color: #f1f5f9;
+        color: #334155;
+        padding: 3px 8px;
+        border-radius: 6px;
+        font-size: 0.85em;
+        margin-right: 5px;
+        display: inline-block;
+        margin-bottom: 5px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -111,7 +121,7 @@ if menu == "📊 Dashboard":
 # ==========================================
 elif menu == "📋 Imóveis Cadastrados":
     st.title("📋 Inventário de Imóveis")
-    st.write("Gerencie a disponibilidade e visualize seus imóveis cadastrados.")
+    st.write("Consulte detalhes completos dos imóveis e altere sua disponibilidade.")
     
     if st.button("🔄 Atualizar Lista"):
         st.rerun()
@@ -141,9 +151,31 @@ elif menu == "📋 Imóveis Cadastrados":
                     with c_badge:
                         st.markdown(f'<span class="price-badge">R$ {imovel.get("valor_venda", 0):,.2f}</span>', unsafe_allow_html=True)
                     
-                    st.write(f"📍 **Bairro:** {imovel.get('bairro')} | 🛏️ **Quartos:** {imovel.get('quartos')}")
+                    st.write(f"📍 **Bairro:** {imovel.get('bairro')}")
+                    
+                    # Detalhes e Características
+                    detalhes = f"🛏️ {imovel.get('quartos', 0)} Quartos | 🚿 {imovel.get('suites', 0)} Suítes | 🚗 {imovel.get('vagas_garagem', 0)} Vagas"
+                    if imovel.get('area_terreno'):
+                        detalhes += f" | 📐 Terreno: {imovel.get('area_terreno')} m²"
+                    if imovel.get('area_construida'):
+                        detalhes += f" | 🏗️ Área Const.: {imovel.get('area_construida')} m²"
+                    
+                    st.write(detalhes)
+                    
+                    # Tags dos Cômodos e Diferenciais
+                    tags_html = ""
+                    if imovel.get('garagem_coberta'): tags_html += '<span class="feature-tag">🚗 Garagem Coberta</span>'
+                    if imovel.get('area_gourmet'): tags_html += '<span class="feature-tag">🍖 Área Gourmet</span>'
+                    if imovel.get('sala'): tags_html += '<span class="feature-tag">🛋️ Sala</span>'
+                    if imovel.get('copa'): tags_html += '<span class="feature-tag">🍽️ Copa</span>'
+                    if imovel.get('cozinha'): tags_html += '<span class="feature-tag">🍳 Cozinha</span>'
+                    
+                    if tags_html:
+                        st.markdown(tags_html, unsafe_allow_html=True)
+                    
                     st.write(f"📝 {imovel.get('descricao', 'Sem descrição.')}")
                     
+                    # Alterar Status
                     novo_status = st.radio(
                         "Status do Imóvel:",
                         ["Disponível", "Vendido"],
@@ -160,26 +192,52 @@ elif menu == "📋 Imóveis Cadastrados":
                 st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# 📝 ABA 3: NOVO IMÓVEL (CÓDIGO AUTO)
+# 📝 ABA 3: NOVO IMÓVEL (COM FICHA TÉCNICA)
 # ==========================================
 elif menu == "📝 Novo Imóvel":
     st.title("📝 Cadastrar Novo Imóvel")
-    st.write("O código do imóvel é gerado automaticamente para evitar duplicidades.")
+    st.write("Preencha a ficha técnica do imóvel para facilitar a busca do cliente ideal.")
     st.divider()
 
     codigo_gerado = gerar_codigo_imovel_auto()
 
     with st.form("form_imovel", clear_on_submit=True):
-        col1, col2 = st.columns(2)
-        with col1:
-            st.text_input("Código do Imóvel (Automático)", value=codigo_gerado, disabled=True)
-            tipo = st.selectbox("Tipo de Imóvel", ["Casa", "Apartamento", "Terreno", "Sobrado", "Cobertura"])
+        st.subheader("📌 Informações Básicas")
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.text_input("Código do Imóvel", value=codigo_gerado, disabled=True)
+            tipo = st.selectbox("Tipo de Imóvel", ["Casa", "Apartamento", "Terreno", "Sobrado", "Cobertura", "Sítio/Chácara"])
+        with c2:
             bairro = st.text_input("Bairro *", "Centro")
-        with col2:
             valor = st.number_input("Valor de Venda (R$) *", min_value=0.0, value=350000.0, step=10000.0)
-            quartos = st.slider("Quantidade de Quartos", 1, 6, 3)
-            descricao = st.text_area("Descrição / Detalhes do Imóvel")
-        
+        with c3:
+            area_terreno = st.number_input("Tamanho do Lote / Terreno (m²)", min_value=0.0, value=250.0, step=10.0)
+            area_construida = st.number_input("Área Construída (m²)", min_value=0.0, value=120.0, step=10.0)
+
+        st.divider()
+        st.subheader("🛏️ Cômodos e Vagas")
+        c4, c5, c6 = st.columns(3)
+        with c4:
+            quartos = st.number_input("Quantidade de Quartos", min_value=0, value=3, step=1)
+            suites = st.number_input("Quantidade de Suítes", min_value=0, value=1, step=1)
+        with c5:
+            vagas = st.number_input("Vagas de Garagem", min_value=0, value=2, step=1)
+        with c6:
+            st.write("**Ambientes Presentes:**")
+            sala = st.checkbox("Sala de Estar/Jantar", value=True)
+            copa = st.checkbox("Copa", value=False)
+            cozinha = st.checkbox("Cozinha", value=True)
+
+        st.divider()
+        st.subheader("✨ Diferenciais do Imóvel")
+        cd1, cd2 = st.columns(2)
+        with cd1:
+            garagem_coberta = st.checkbox("🚘 Garagem Coberta")
+        with cd2:
+            area_gourmet = st.checkbox("🍖 Área Gourmet / Churrasqueira")
+
+        st.divider()
+        descricao = st.text_area("📝 Descrição Geral / Observações")
         fotos = st.file_uploader("📷 Fotos do Imóvel (JPG ou PNG)", type=["jpg", "png", "jpeg"], accept_multiple_files=True)
         
         submitted = st.form_submit_button("💾 Salvar Imóvel", use_container_width=True)
@@ -199,6 +257,15 @@ elif menu == "📝 Novo Imóvel":
                 "bairro": bairro,
                 "valor_venda": valor,
                 "quartos": quartos,
+                "suites": suites,
+                "vagas_garagem": vagas,
+                "garagem_coberta": garagem_coberta,
+                "area_gourmet": area_gourmet,
+                "sala": sala,
+                "copa": copa,
+                "cozinha": cozinha,
+                "area_terreno": area_terreno,
+                "area_construida": area_construida,
                 "descricao": descricao,
                 "fotos_urls": urls_fotos,
                 "status": "Disponível"
@@ -294,7 +361,7 @@ elif menu == "🎯 Encontrar Matches":
                 for m in matches:
                     c1, c2 = st.columns([3, 1])
                     with c1:
-                        st.write(f"🏠 **{m.get('tipo')} [{m.get('codigo_imovel')}]** — R$ {m.get('valor_venda'):,.2f} ({m.get('quartos')} quartos no {m.get('bairro')})")
+                        st.write(f"🏠 **{m.get('tipo')} [{m.get('codigo_imovel')}]** — R$ {m.get('valor_venda'):,.2f} ({m.get('quartos')} qtos, {m.get('suites', 0)} suítes no {m.get('bairro')})")
                     with c2:
                         foto_link = m.get('fotos_urls')[0] if m.get('fotos_urls') else 'Sem foto'
                         texto_msg = f"Olá {lead.get('nome')}! Encontrei o imóvel ideal para você: {m.get('tipo')} no {m.get('bairro')} por R$ {m.get('valor_venda'):,.2f}. Confira fotos aqui: {foto_link}"
