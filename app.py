@@ -15,14 +15,14 @@ BAIRROS_PASSOS = [
     "Aclimação", "Alto dos Maias", "Alvorada", "Antenas", "Aroeiras",
     "Bela Vista 1 e 2", "Belo Horizonte", "Califórnia", "Canadá 1, 2 e 3",
     "Canjeranus", "Carmelo", "Centro", "Cohab 4", "Cohab 5", "Coimbras",
-    "Condomínio da Nações", "Condomínio Monte Belo", "Eldorado", "Exposição",
+    "Condomínio das Nações", "Condomínio Monte Belo", "Eldorado", "Exposição",
     "Flamboyant", "Jacarandá", "Jardim América", "Jardim Cidade",
     "Jardim Colégio de Passos", "Jardim Europa", "Jardim Florença",
     "Jardim dos Lagos", "Mirante do Vale", "Muarama", "Nossa Senhora das Graças",
-    "Nova California", "Nova Passos 1, 2, 3 e 4", "Novo Horizonte", "Nsa de Fátima",
+    "Nova California", "Nova Passos ", "Novo Horizonte", "Nsa de Fátima",
     "Panorama", "Parque das Oliveiras", "Penha", "Penha 2", "Planalto",
     "Polivalente", "Primavera", "Recanto do Bosque", "Santa Luzia", "São Benedito",
-    "São Francisco", "Tropical", "Vale Verde 1 e 2", "Vilagio D´Italia", "Vila Rica"
+    "São Francisco", "Tropical", "Vale Verde ", ""Vale Verde 2" "Vilagio D´Italia", "Vila Rica"
 ]
 
 # --- CONEXÃO SUPABASE ---
@@ -192,7 +192,7 @@ elif menu == "📋 Imóveis Cadastrados":
                     
                     st.write(f"📍 **Bairro:** {imovel.get('bairro')}")
                     
-                    detalhes = f"🚗 {imovel.get('vagas_garagem', 0)} Vagas"
+                    detalhes = f"🛏️ {imovel.get('quartos', 0)} Quarto(s) | 🚿 {imovel.get('suites', 0)} Suíte(s) | 🚽 {imovel.get('banheiros', 0)} Banheiro(s) | 🚗 {imovel.get('vagas_garagem', 0)} Vaga(s)"
                     if imovel.get('area_terreno'):
                         detalhes += f" | 📐 Terreno: {imovel.get('area_terreno')} m²"
                     if imovel.get('area_construida'):
@@ -245,7 +245,6 @@ elif menu == "📋 Imóveis Cadastrados":
                         
                         tipos_list = ["Casa", "Apartamento", "Terreno", "Sobrado", "Cobertura", "Sítio/Chácara"]
                         idx_tipo = tipos_list.index(imovel.get('tipo')) if imovel.get('tipo') in tipos_list else 0
-                        
                         idx_bairro = BAIRROS_PASSOS.index(imovel.get('bairro')) if imovel.get('bairro') in BAIRROS_PASSOS else 0
                         
                         with e_c1:
@@ -258,19 +257,25 @@ elif menu == "📋 Imóveis Cadastrados":
                             e_area_construida = st.number_input("Área Construída (m²)", min_value=0.0, value=float(imovel.get('area_construida', 0.0) or 0.0), step=10.0, key=f"e_ac_{imovel_id}")
 
                         st.divider()
-                        e_c4, e_c5 = st.columns(2)
-                        with e_c4:
-                            e_vagas = st.number_input("Vagas de Garagem", min_value=0, value=int(imovel.get('vagas_garagem', 0)), step=1, key=f"e_v_{imovel_id}")
+                        e_cq1, e_cq2, e_cq3, e_cq4 = st.columns(4)
+                        with e_cq1:
+                            e_quartos = st.number_input("Dormitórios / Quartos", min_value=0, value=int(imovel.get('quartos', 0) or 0), step=1, key=f"e_q_{imovel_id}")
+                        with e_cq2:
+                            e_suites = st.number_input("Suítes", min_value=0, value=int(imovel.get('suites', 0) or 0), step=1, key=f"e_s_{imovel_id}")
+                        with e_cq3:
+                            e_banheiros = st.number_input("Banheiros", min_value=0, value=int(imovel.get('banheiros', 0) or 0), step=1, key=f"e_b_{imovel_id}")
+                        with e_cq4:
+                            e_vagas = st.number_input("Vagas de Garagem", min_value=0, value=int(imovel.get('vagas_garagem', 0) or 0), step=1, key=f"e_v_{imovel_id}")
+
+                        st.divider()
+                        st.write("**Ambientes e Diferenciais:**")
+                        e_c5, e_c6 = st.columns(2)
                         with e_c5:
-                            st.write("**Ambientes:**")
                             e_sala = st.checkbox("Sala", value=bool(imovel.get('sala', True)), key=f"e_sala_{imovel_id}")
                             e_copa = st.checkbox("Copa", value=bool(imovel.get('copa', False)), key=f"e_copa_{imovel_id}")
                             e_cozinha = st.checkbox("Cozinha", value=bool(imovel.get('cozinha', True)), key=f"e_cozinha_{imovel_id}")
-
-                        e_cd1, e_cd2 = st.columns(2)
-                        with e_cd1:
+                        with e_c6:
                             e_garagem_coberta = st.checkbox("🚘 Garagem Coberta", value=bool(imovel.get('garagem_coberta', False)), key=f"e_gc_{imovel_id}")
-                        with e_cd2:
                             e_area_gourmet = st.checkbox("🍖 Área Gourmet", value=bool(imovel.get('area_gourmet', False)), key=f"e_ag_{imovel_id}")
 
                         e_descricao = st.text_area("Descrição", value=imovel.get('descricao', ''), key=f"e_desc_{imovel_id}")
@@ -281,6 +286,9 @@ elif menu == "📋 Imóveis Cadastrados":
                                 "tipo": e_tipo,
                                 "bairro": e_bairro,
                                 "valor_venda": e_valor,
+                                "quartos": e_quartos,
+                                "suites": e_suites,
+                                "banheiros": e_banheiros,
                                 "vagas_garagem": e_vagas,
                                 "garagem_coberta": e_garagem_coberta,
                                 "area_gourmet": e_area_gourmet,
@@ -321,22 +329,28 @@ elif menu == "📝 Novo Imóvel":
             area_construida = st.number_input("Área Construída (m²)", min_value=0.0, value=120.0, step=10.0)
 
         st.divider()
-        st.subheader("🚗 Vagas e Ambientes")
-        c4, c5 = st.columns(2)
+        st.subheader("🛏️ Cômodos e Vagas")
+        c4, c5, c6, c7 = st.columns(4)
         with c4:
-            vagas = st.number_input("Vagas de Garagem", min_value=0, value=2, step=1)
+            quartos = st.number_input("Dormitórios / Quartos", min_value=0, value=3, step=1)
         with c5:
+            suites = st.number_input("Suítes", min_value=0, value=1, step=1)
+        with c6:
+            banheiros = st.number_input("Banheiros (Total)", min_value=0, value=2, step=1)
+        with c7:
+            vagas = st.number_input("Vagas de Garagem", min_value=0, value=2, step=1)
+
+        st.divider()
+        st.subheader("✨ Ambientes e Diferenciais")
+        cd1, cd2 = st.columns(2)
+        with cd1:
             st.write("**Ambientes Presentes:**")
             sala = st.checkbox("Sala de Estar/Jantar", value=True)
             copa = st.checkbox("Copa", value=False)
             cozinha = st.checkbox("Cozinha", value=True)
-
-        st.divider()
-        st.subheader("✨ Diferenciais do Imóvel")
-        cd1, cd2 = st.columns(2)
-        with cd1:
-            garagem_coberta = st.checkbox("🚘 Garagem Coberta")
         with cd2:
+            st.write("**Diferenciais:**")
+            garagem_coberta = st.checkbox("🚘 Garagem Coberta")
             area_gourmet = st.checkbox("🍖 Área Gourmet / Churrasqueira")
 
         st.divider()
@@ -359,6 +373,9 @@ elif menu == "📝 Novo Imóvel":
                 "tipo": tipo,
                 "bairro": bairro,
                 "valor_venda": valor,
+                "quartos": quartos,
+                "suites": suites,
+                "banheiros": banheiros,
                 "vagas_garagem": vagas,
                 "garagem_coberta": garagem_coberta,
                 "area_gourmet": area_gourmet,
@@ -534,6 +551,12 @@ elif menu == "🎯 Encontrar Matches":
                     with c2:
                         # Montando a lista de características registradas
                         caracteristicas = []
+                        if m.get('quartos'):
+                            caracteristicas.append(f"🛏️ {m.get('quartos')} quarto(s)")
+                        if m.get('suites'):
+                            caracteristicas.append(f"🚿 {m.get('suites')} suíte(s)")
+                        if m.get('banheiros'):
+                            caracteristicas.append(f"🚽 {m.get('banheiros')} banheiro(s)")
                         if m.get('vagas_garagem'):
                             caracteristicas.append(f"🚗 {m.get('vagas_garagem')} vaga(s) de garagem")
                         if m.get('garagem_coberta'):
