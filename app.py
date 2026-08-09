@@ -133,7 +133,7 @@ if menu == "📊 Dashboard":
         st.metric(label="🔥 Matches Ativos", value=total_matches)
 
 # ==========================================
-# 📋 ABA 2: IMÓVEIS CADASTRADOS & EDIÇÃO
+# 📋 ABA 2: IMÓVEIS CADASTRADOS & GALERIA DE FOTOS
 # ==========================================
 elif menu == "📋 Imóveis Cadastrados":
     st.title("📋 Inventário de Imóveis")
@@ -156,9 +156,32 @@ elif menu == "📋 Imóveis Cadastrados":
                 col1, col2 = st.columns([1, 2.5])
                 
                 with col1:
-                    fotos_urls = imovel.get("fotos_urls")
-                    if fotos_urls and len(fotos_urls) > 0:
-                        st.image(fotos_urls[0], use_container_width=True)
+                    fotos_urls = imovel.get("fotos_urls") or []
+                    if fotos_urls:
+                        key_foto = f"foto_idx_{imovel_id}"
+                        if key_foto not in st.session_state:
+                            st.session_state[key_foto] = 0
+                        
+                        foto_idx = st.session_state[key_foto]
+                        # Garantir que o índice é válido caso fotos tenham sido alteradas
+                        if foto_idx >= len(fotos_urls):
+                            foto_idx = 0
+                            st.session_state[key_foto] = 0
+
+                        st.image(fotos_urls[foto_idx], use_container_width=True)
+                        
+                        if len(fotos_urls) > 1:
+                            btn_prev, btn_info, btn_next = st.columns([1, 2, 1])
+                            with btn_prev:
+                                if st.button("◀", key=f"prev_{imovel_id}"):
+                                    st.session_state[key_foto] = (foto_idx - 1) % len(fotos_urls)
+                                    st.rerun()
+                            with btn_info:
+                                st.caption(f"🖼️ {foto_idx + 1} / {len(fotos_urls)}")
+                            with btn_next:
+                                if st.button("▶", key=f"next_{imovel_id}"):
+                                    st.session_state[key_foto] = (foto_idx + 1) % len(fotos_urls)
+                                    st.rerun()
                     else:
                         st.image("https://via.placeholder.com/400x300?text=Sem+Foto", use_container_width=True)
                 
