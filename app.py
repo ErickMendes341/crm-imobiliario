@@ -532,8 +532,12 @@ elif menu == "🎯 Encontrar Matches":
                     with c1:
                         st.write(f"🏠 **{m.get('tipo')} [{m.get('codigo_imovel')}]** — R$ {m.get('valor_venda'):,.2f} no bairro **{m.get('bairro')}**")
                     with c2:
-                        foto_link = m.get('fotos_urls')[0] if m.get('fotos_urls') else 'Sem foto'
-                        texto_msg = f"Olá {lead.get('nome')}! Encontrei o imóvel ideal para você no bairro {m.get('bairro')}: {m.get('tipo')} por R$ {m.get('valor_venda'):,.2f}. Confira fotos aqui: {foto_link}"
+                        texto_msg = (
+                            f"Olá {lead.get('nome')}! Tudo bem?\n\n"
+                            f"Encontrei uma opção de {m.get('tipo')} no bairro {m.get('bairro')} "
+                            f"por R$ {m.get('valor_venda'):,.2f} que encaixa perfeitamente no seu perfil.\n\n"
+                            f"Posso te enviar as fotos para você dar uma olhada?"
+                        )
                         link_wa = f"https://wa.me/{whatsapp_num}?text={urllib.parse.quote(texto_msg)}"
                         st.markdown(f"[📲 **Enviar WhatsApp**]({link_wa})")
             else:
