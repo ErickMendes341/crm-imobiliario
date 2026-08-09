@@ -125,19 +125,18 @@ if menu == "📊 Dashboard":
         for lead in leads_ativos:
             orc = lead.get('orcamento_maximo', 0)
             bairros = lead.get('bairros_interesse', [])
-            q_min = lead.get('quartos_minimos', 1)
             for im in imoveis_disponiveis:
                 bairro_ok = (not bairros) or (im.get('bairro') in bairros)
-                if im.get('valor_venda', 0) <= orc and bairro_ok and im.get('quartos', 0) >= q_min:
+                if im.get('valor_venda', 0) <= orc and bairro_ok:
                     total_matches += 1
         st.metric(label="🔥 Matches Ativos", value=total_matches)
 
 # ==========================================
-# 📋 ABA 2: IMÓVEIS CADASTRADOS & GALERIA DE FOTOS
+# 📋 ABA 2: IMÓVEIS CADASTRADOS & GALERIA & EDIÇÃO & EXCLUSÃO
 # ==========================================
 elif menu == "📋 Imóveis Cadastrados":
     st.title("📋 Inventário de Imóveis")
-    st.write("Consulte, gerencie e edite os imóveis cadastrados em Passos-MG.")
+    st.write("Consulte, gerencie, edite e remova imóveis cadastrados em Passos-MG.")
     
     if st.button("🔄 Atualizar Lista"):
         st.rerun()
@@ -163,7 +162,6 @@ elif menu == "📋 Imóveis Cadastrados":
                             st.session_state[key_foto] = 0
                         
                         foto_idx = st.session_state[key_foto]
-                        # Garantir que o índice é válido caso fotos tenham sido alteradas
                         if foto_idx >= len(fotos_urls):
                             foto_idx = 0
                             st.session_state[key_foto] = 0
@@ -194,7 +192,7 @@ elif menu == "📋 Imóveis Cadastrados":
                     
                     st.write(f"📍 **Bairro:** {imovel.get('bairro')}")
                     
-                    detalhes = f"🛏️ {imovel.get('quartos', 0)} Quartos | 🚿 {imovel.get('suites', 0)} Suítes | 🚗 {imovel.get('vagas_garagem', 0)} Vagas"
+                    detalhes = f"🚗 {imovel.get('vagas_garagem', 0)} Vagas"
                     if imovel.get('area_terreno'):
                         detalhes += f" | 📐 Terreno: {imovel.get('area_terreno')} m²"
                     if imovel.get('area_construida'):
@@ -214,7 +212,7 @@ elif menu == "📋 Imóveis Cadastrados":
                     
                     st.write(f"📝 {imovel.get('descricao', 'Sem descrição.')}")
                     
-                    c_status, c_edit = st.columns([2, 1])
+                    c_status, c_del = st.columns([2, 1])
                     with c_status:
                         novo_status = st.radio(
                             "Status do Imóvel:",
@@ -227,6 +225,18 @@ elif menu == "📋 Imóveis Cadastrados":
                             supabase.table("imoveis").update({"status": novo_status}).eq("id", imovel_id).execute()
                             st.success(f"Status atualizado para: **{novo_status}**!")
                             st.rerun()
+
+                # --- OPÇÃO PARA EXCLUIR IMÓVEL ---
+                with st.expander(f"🗑️ Excluir Imóvel {imovel.get('codigo_imovel')}"):
+                    st.warning("⚠️ Esta ação é permanente e removerá o imóvel da sua carteira.")
+                    confirma_excluir = st.checkbox("Confirmar que desejo excluir este imóvel", key=f"chk_del_{imovel_id}")
+                    if st.button("🚨 Confirmar Exclusão Definitiva", key=f"btn_del_{imovel_id}", type="primary"):
+                        if confirma_excluir:
+                            supabase.table("imoveis").delete().eq("id", imovel_id).execute()
+                            st.success(f"Imóvel **{imovel.get('codigo_imovel')}** removido com sucesso!")
+                            st.rerun()
+                        else:
+                            st.error("Marque a caixa de confirmação para concluir a exclusão.")
 
                 # --- SANFONA PARA EDITAR O IMÓVEL ---
                 with st.expander(f"✏️ Editar dados do imóvel {imovel.get('codigo_imovel')}"):
@@ -248,13 +258,10 @@ elif menu == "📋 Imóveis Cadastrados":
                             e_area_construida = st.number_input("Área Construída (m²)", min_value=0.0, value=float(imovel.get('area_construida', 0.0) or 0.0), step=10.0, key=f"e_ac_{imovel_id}")
 
                         st.divider()
-                        e_c4, e_c5, e_c6 = st.columns(3)
+                        e_c4, e_c5 = st.columns(2)
                         with e_c4:
-                            e_quartos = st.number_input("Quartos", min_value=0, value=int(imovel.get('quartos', 0)), step=1, key=f"e_q_{imovel_id}")
-                            e_suites = st.number_input("Suítes", min_value=0, value=int(imovel.get('suites', 0)), step=1, key=f"e_s_{imovel_id}")
-                        with e_c5:
                             e_vagas = st.number_input("Vagas de Garagem", min_value=0, value=int(imovel.get('vagas_garagem', 0)), step=1, key=f"e_v_{imovel_id}")
-                        with e_c6:
+                        with e_c5:
                             st.write("**Ambientes:**")
                             e_sala = st.checkbox("Sala", value=bool(imovel.get('sala', True)), key=f"e_sala_{imovel_id}")
                             e_copa = st.checkbox("Copa", value=bool(imovel.get('copa', False)), key=f"e_copa_{imovel_id}")
@@ -274,8 +281,6 @@ elif menu == "📋 Imóveis Cadastrados":
                                 "tipo": e_tipo,
                                 "bairro": e_bairro,
                                 "valor_venda": e_valor,
-                                "quartos": e_quartos,
-                                "suites": e_suites,
                                 "vagas_garagem": e_vagas,
                                 "garagem_coberta": e_garagem_coberta,
                                 "area_gourmet": e_area_gourmet,
@@ -316,14 +321,11 @@ elif menu == "📝 Novo Imóvel":
             area_construida = st.number_input("Área Construída (m²)", min_value=0.0, value=120.0, step=10.0)
 
         st.divider()
-        st.subheader("🛏️ Cômodos e Vagas")
-        c4, c5, c6 = st.columns(3)
+        st.subheader("🚗 Vagas e Ambientes")
+        c4, c5 = st.columns(2)
         with c4:
-            quartos = st.number_input("Quantidade de Quartos", min_value=0, value=3, step=1)
-            suites = st.number_input("Quantidade de Suítes", min_value=0, value=1, step=1)
-        with c5:
             vagas = st.number_input("Vagas de Garagem", min_value=0, value=2, step=1)
-        with c6:
+        with c5:
             st.write("**Ambientes Presentes:**")
             sala = st.checkbox("Sala de Estar/Jantar", value=True)
             copa = st.checkbox("Copa", value=False)
@@ -357,8 +359,6 @@ elif menu == "📝 Novo Imóvel":
                 "tipo": tipo,
                 "bairro": bairro,
                 "valor_venda": valor,
-                "quartos": quartos,
-                "suites": suites,
                 "vagas_garagem": vagas,
                 "garagem_coberta": garagem_coberta,
                 "area_gourmet": area_gourmet,
@@ -387,7 +387,6 @@ elif menu == "👤 Novo Lead":
         with col1:
             nome = st.text_input("Nome Completo do Cliente *")
             whatsapp = st.text_input("WhatsApp com DDD *", "+5535999999999")
-            quartos_min = st.slider("Mínimo de Quartos Desejados", 1, 6, 2)
         with col2:
             bairros_interesse = st.multiselect("Bairros de Interesse (Passos-MG) *", BAIRROS_PASSOS, default=["Centro"])
             orcamento = st.number_input("Orçamento Máximo (R$) *", min_value=0.0, value=500000.0, step=10000.0)
@@ -402,7 +401,6 @@ elif menu == "👤 Novo Lead":
                     "whatsapp": whatsapp,
                     "bairros_interesse": bairros_interesse,
                     "orcamento_maximo": orcamento,
-                    "quartos_minimos": quartos_min,
                     "status": "Em busca"
                 }
                 supabase.table("leads").insert(dados_lead).execute()
@@ -435,7 +433,7 @@ elif menu == "👥 Gerenciar Leads":
                     st.subheader(f"👤 {lead.get('nome')} — {lead.get('whatsapp')}")
                     bairros_str = ", ".join(lead.get('bairros_interesse', [])) if lead.get('bairros_interesse') else "Nenhum"
                     st.write(f"📍 **Bairros de Interesse:** {bairros_str}")
-                    st.write(f"💰 **Orçamento Máximo:** R$ {lead.get('orcamento_maximo', 0):,.2f} | 🛏️ **Min. Quartos:** {lead.get('quartos_minimos', 1)}")
+                    st.write(f"💰 **Orçamento Máximo:** R$ {lead.get('orcamento_maximo', 0):,.2f}")
                 
                 with col2:
                     novo_status_lead = st.radio(
@@ -457,7 +455,6 @@ elif menu == "👥 Gerenciar Leads":
                         with el_c1:
                             e_nome = st.text_input("Nome Completo", value=lead.get('nome', ''), key=f"e_nome_{lead_id}")
                             e_whatsapp = st.text_input("WhatsApp", value=lead.get('whatsapp', ''), key=f"e_wa_{lead_id}")
-                            e_quartos_min = st.slider("Mínimo de Quartos", 1, 6, value=int(lead.get('quartos_minimos', 2)), key=f"e_qmin_{lead_id}")
                         with el_c2:
                             bairros_atuais = lead.get('bairros_interesse', [])
                             bairros_validos = [b for b in bairros_atuais if b in BAIRROS_PASSOS]
@@ -470,8 +467,7 @@ elif menu == "👥 Gerenciar Leads":
                                 "nome": e_nome,
                                 "whatsapp": e_whatsapp,
                                 "bairros_interesse": e_bairros,
-                                "orcamento_maximo": e_orcamento,
-                                "quartos_minimos": e_quartos_min
+                                "orcamento_maximo": e_orcamento
                             }
                             supabase.table("leads").update(dados_lead_atualizados).eq("id", lead_id).execute()
                             st.success("✅ Dados do Lead atualizados com sucesso!")
@@ -516,10 +512,9 @@ elif menu == "🎯 Encontrar Matches":
             whatsapp_num = lead.get('whatsapp', '').replace("+", "").replace(" ", "").replace("-", "")
             orcamento = lead.get('orcamento_maximo', 0)
             bairros = lead.get('bairros_interesse', [])
-            quartos_min = lead.get('quartos_minimos', 1)
             
             bairros_texto = ", ".join(bairros) if bairros else "Qualquer Bairro"
-            st.caption(f"💰 Orçamento Máx: **R$ {orcamento:,.2f}** | 📍 Bairros: **{bairros_texto}** | 🛏️ Mín. Quartos: **{quartos_min}**")
+            st.caption(f"💰 Orçamento Máx: **R$ {orcamento:,.2f}** | 📍 Bairros: **{bairros_texto}**")
             
             imoveis_disponiveis = [i for i in imoveis_data if i.get('status', 'Disponível') == 'Disponível']
             
@@ -527,16 +522,15 @@ elif menu == "🎯 Encontrar Matches":
             for imovel in imoveis_disponiveis:
                 preco_ok = imovel.get('valor_venda', 0) <= orcamento
                 bairro_ok = (not bairros) or (imovel.get('bairro') in bairros)
-                quartos_ok = imovel.get('quartos', 0) >= quartos_min
                 
-                if preco_ok and bairro_ok and quartos_ok:
+                if preco_ok and bairro_ok:
                     matches.append(imovel)
             
             if matches:
                 for m in matches:
                     c1, c2 = st.columns([3, 1])
                     with c1:
-                        st.write(f"🏠 **{m.get('tipo')} [{m.get('codigo_imovel')}]** — R$ {m.get('valor_venda'):,.2f} ({m.get('quartos')} qtos no **{m.get('bairro')}**)")
+                        st.write(f"🏠 **{m.get('tipo')} [{m.get('codigo_imovel')}]** — R$ {m.get('valor_venda'):,.2f} no bairro **{m.get('bairro')}**")
                     with c2:
                         foto_link = m.get('fotos_urls')[0] if m.get('fotos_urls') else 'Sem foto'
                         texto_msg = f"Olá {lead.get('nome')}! Encontrei o imóvel ideal para você no bairro {m.get('bairro')}: {m.get('tipo')} por R$ {m.get('valor_venda'):,.2f}. Confira fotos aqui: {foto_link}"
