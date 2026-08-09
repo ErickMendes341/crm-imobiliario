@@ -22,7 +22,7 @@ BAIRROS_PASSOS = [
     "Nova California", "Nova Passos ", "Novo Horizonte", "Nsa de Fátima",
     "Panorama", "Parque das Oliveiras", "Penha", "Penha 2", "Planalto",
     "Polivalente", "Primavera", "Recanto do Bosque", "Santa Luzia", "São Benedito",
-    "São Francisco", "Tropical", "Vale Verde ", ""Vale Verde 2" "Vilagio D´Italia", "Vila Rica"
+    "São Francisco", "Tropical", "Vale Verde", "Vale Verde 2" "Vilagio D´Italia", "Vila Rica"
 ]
 
 # --- CONEXÃO SUPABASE ---
