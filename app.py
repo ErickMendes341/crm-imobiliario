@@ -532,10 +532,34 @@ elif menu == "🎯 Encontrar Matches":
                     with c1:
                         st.write(f"🏠 **{m.get('tipo')} [{m.get('codigo_imovel')}]** — R$ {m.get('valor_venda'):,.2f} no bairro **{m.get('bairro')}**")
                     with c2:
+                        # Montando a lista de características registradas
+                        caracteristicas = []
+                        if m.get('vagas_garagem'):
+                            caracteristicas.append(f"🚗 {m.get('vagas_garagem')} vaga(s) de garagem")
+                        if m.get('garagem_coberta'):
+                            caracteristicas.append("🚘 Garagem coberta")
+                        if m.get('area_gourmet'):
+                            caracteristicas.append("🍖 Área gourmet / churrasqueira")
+                        if m.get('sala'):
+                            caracteristicas.append("🛋️ Sala")
+                        if m.get('copa'):
+                            caracteristicas.append("🍽️ Copa")
+                        if m.get('cozinha'):
+                            caracteristicas.append("🍳 Cozinha")
+                        if m.get('area_construida'):
+                            caracteristicas.append(f"🏗️ Área construída: {m.get('area_construida')}m²")
+                        if m.get('area_terreno'):
+                            caracteristicas.append(f"📐 Terreno: {m.get('area_terreno')}m²")
+
+                        texto_caracteristicas = ""
+                        if caracteristicas:
+                            texto_caracteristicas = "\n\n*Destaques do Imóvel:*\n• " + "\n• ".join(caracteristicas)
+
                         texto_msg = (
                             f"Olá {lead.get('nome')}! Tudo bem?\n\n"
-                            f"Encontrei uma opção de {m.get('tipo')} no bairro {m.get('bairro')} "
-                            f"por R$ {m.get('valor_venda'):,.2f} que encaixa perfeitamente no seu perfil.\n\n"
+                            f"Encontrei uma opção de *{m.get('tipo')}* no bairro *{m.get('bairro')}* "
+                            f"por *R$ {m.get('valor_venda'):,.2f}* que encaixa no seu perfil."
+                            f"{texto_caracteristicas}\n\n"
                             f"Posso te enviar as fotos para você dar uma olhada?"
                         )
                         link_wa = f"https://wa.me/{whatsapp_num}?text={urllib.parse.quote(texto_msg)}"
