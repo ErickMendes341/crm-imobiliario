@@ -10,21 +10,20 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- LISTA OFICIAL DE BAIRROS DE PASSOS - MG ---
-BAIRROS_PASSOS = sorted([
-    "Alto AABB", "Alto das Brisas", "Amélia", "Bela Vista", "Boa Vista", 
-    "Calimério", "Canjeranus", "Caramuru", "Centro", "Chácara Alvorada", 
-    "Chácara das Palmeiras", "Cohab", "Coimbras", "Distrito Industrial", 
-    "Exposição", "Fátima", "Jardim América", "Jardim Colesp", "Jardim Europa", 
-    "Jardim Flamboyant", "Jardim Polivalente", "Jardim Primavera", "Jardim Santa Lúcia", 
-    "Jardim Sunset", "Jardim São Luiz", "Jardim Teledelfia", "Jardim Tropeiros", 
-    "Muambas", "Nossa Senhora das Graças", "Nossa Senhora de Fátima", "Nova Passos", 
-    "Novo Horizonte", "Novo Mundo", "Piratininga", "Planalto", "Penha", 
-    "Rancho Alegre", "Residencial AABB", "Residencial Eldorada", "Residencial Lomas", 
-    "Residencial Moinho do Vento", "Residencial San Genaro", "Santa Cruz", "Santa Luzia", 
-    "Santa Rosa", "São Benedito", "São Francisco", "São Jerônimo", "São José", 
-    "Umuarama", "Vila Esperança", "Vila Mello", "Vila Rica", "Zona Rural"
-])
+# --- LISTA ATUALIZADA DE BAIRROS DE PASSOS - MG (ORDEM ALFABÉTICA) ---
+BAIRROS_PASSOS = [
+    "Aclimação", "Alto dos Maias", "Alvorada", "Antenas", "Aroeiras",
+    "Bela Vista 1 e 2", "Belo Horizonte", "Califórnia", "Canadá 1, 2 e 3",
+    "Canjeranus", "Carmelo", "Centro", "Cohab 4", "Cohab 5", "Coimbras",
+    "Condomínio da Nações", "Condomínio Monte Belo", "Eldorado", "Exposição",
+    "Flamboyant", "Jacarandá", "Jardim América", "Jardim Cidade",
+    "Jardim Colégio de Passos", "Jardim Europa", "Jardim Florença",
+    "Jardim dos Lagos", "Mirante do Vale", "Muarama", "Nossa Senhora das Graças",
+    "Nova California", "Nova Passos 1, 2, 3 e 4", "Novo Horizonte", "Nsa de Fátima",
+    "Panorama", "Parque das Oliveiras", "Penha", "Penha 2", "Planalto",
+    "Polivalente", "Primavera", "Recanto do Bosque", "Santa Luzia", "São Benedito",
+    "São Francisco", "Tropical", "Vale Verde 1 e 2", "Vilagio D´Italia", "Vila Rica"
+]
 
 # --- CONEXÃO SUPABASE ---
 SUPABASE_URL = "https://dsnamhmffvjxcfqtlzet.supabase.co"
@@ -128,7 +127,6 @@ if menu == "📊 Dashboard":
             bairros = lead.get('bairros_interesse', [])
             q_min = lead.get('quartos_minimos', 1)
             for im in imoveis_disponiveis:
-                # Match se bairro do imóvel estiver na lista do cliente
                 bairro_ok = (not bairros) or (im.get('bairro') in bairros)
                 if im.get('valor_venda', 0) <= orc and bairro_ok and im.get('quartos', 0) >= q_min:
                     total_matches += 1
@@ -289,7 +287,7 @@ elif menu == "📝 Novo Imóvel":
             st.success(f"✅ Imóvel **{codigo_gerado}** cadastrado com sucesso no bairro **{bairro}**!")
 
 # ==========================================
-# 👤 ABA 4: NOVO LEAD (MÚLTIPLOS BAIRROS)
+# 👤 ABA 4: NOVO LEAD
 # ==========================================
 elif menu == "👤 Novo Lead":
     st.title("👤 Cadastrar Novo Lead")
@@ -314,7 +312,7 @@ elif menu == "👤 Novo Lead":
                 dados_lead = {
                     "nome": nome,
                     "whatsapp": whatsapp,
-                    "bairros_interesse": bairros_interesse,  # Salva a lista de bairros selecionados
+                    "bairros_interesse": bairros_interesse,
                     "orcamento_maximo": orcamento,
                     "quartos_minimos": quartos_min,
                     "status": "Em busca"
@@ -388,3 +386,4 @@ elif menu == "🎯 Encontrar Matches":
             else:
                 st.warning("Nenhum imóvel disponível compatível nos bairros selecionados.")
             st.divider()
+            
