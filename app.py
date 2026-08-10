@@ -11,7 +11,7 @@ st.set_page_config(
 )
 
 # --- LISTA DE BAIRROS DE PASSOS - MG (ORDEM ALFABÉTICA) ---
-BAIRROS_PASSOS = [
+BAIRROS_PASSOS = sorted([
     "Aclimação", "Alto dos Maias", "Alvorada", "Antenas", "Aroeiras",
     "Bela Vista 1 e 2", "Belo Horizonte", "Califórnia", "Canadá 1, 2 e 3",
     "Canjeranus", "Carmelo", "Centro", "Cohab 4", "Cohab 5", "Coimbras",
@@ -22,12 +22,8 @@ BAIRROS_PASSOS = [
     "Nova California", "Nova Passos", "Novo Horizonte", "Nsa de Fátima",
     "Panorama", "Parque das Oliveiras", "Penha", "Penha 2", "Planalto",
     "Polivalente", "Primavera", "Recanto do Bosque", "Santa Luzia", "São Benedito",
-    "São Francisco", "Tropical", "Vale Verde" "Vale verde 2", "Vilagio D´Italia", "Vila Rica"
-]
-
-OPCOES_PAGAMENTO = ["À vista", "Financiamento", "Consórcio", "Permuta / Troca", "Indefinido"]
-OPCOES_URGENCIA = ["Imediata (até 30 dias)", "Médio Prazo (1 a 3 meses)", "Longo Prazo / Pesquisando"]
-OPCOES_ORIGEM = ["Instagram / Facebook", "Portal Imobiliário", "Indicação", "Placa no Imóvel", "Passante / Loja", "Outro"]
+    "São Francisco", "Tropical", "Vale Verde 1 e 2", "Vilagio D´Italia", "Vila Rica"
+])
 
 # --- CONEXÃO SUPABASE ---
 SUPABASE_URL = "https://dsnamhmffvjxcfqtlzet.supabase.co"
@@ -129,25 +125,15 @@ if menu == "📊 Dashboard":
         for lead in leads_ativos:
             orc = lead.get('orcamento_maximo', 0)
             bairros = lead.get('bairros_interesse', [])
-            min_q = lead.get('min_quartos', 0) or 0
-            min_s = lead.get('min_suites', 0) or 0
-            min_b = lead.get('min_banheiros', 0) or 0
-            min_v = lead.get('min_vagas', 0) or 0
-            
             for im in imoveis_disponiveis:
                 bairro_ok = (not bairros) or (im.get('bairro') in bairros)
                 preco_ok = im.get('valor_venda', 0) <= orc
-                q_ok = (im.get('quartos', 0) or 0) >= min_q
-                s_ok = (im.get('suites', 0) or 0) >= min_s
-                b_ok = (im.get('banheiros', 0) or 0) >= min_b
-                v_ok = (im.get('vagas_garagem', 0) or 0) >= min_v
-
-                if preco_ok and bairro_ok and q_ok and s_ok and b_ok and v_ok:
+                if preco_ok and bairro_ok:
                     total_matches += 1
         st.metric(label="🔥 Matches Ativos", value=total_matches)
 
 # ==========================================
-# 📋 ABA 2: IMÓVEIS CADASTRADOS
+# 📋 ABA 2: IMÓVEIS CADASTRADOS & EDIÇÃO
 # ==========================================
 elif menu == "📋 Imóveis Cadastrados":
     st.title("📋 Inventário de Imóveis")
@@ -405,45 +391,22 @@ elif menu == "📝 Novo Imóvel":
             st.success(f"✅ Imóvel **{codigo_gerado}** cadastrado com sucesso no bairro **{bairro}**!")
 
 # ==========================================
-# 👤 ABA 4: NOVO LEAD (COM NOVAS MÉTRICAS E REQUISITOS)
+# 👤 ABA 4: NOVO LEAD
 # ==========================================
 elif menu == "👤 Novo Lead":
     st.title("👤 Cadastrar Novo Lead")
-    st.write("Preencha os dados do cliente e defina suas preferências para qualificação e match automático.")
+    st.write("Defina o nome, WhatsApp, orçamento e selecione os bairros de interesse do cliente.")
     st.divider()
 
     with st.form("form_lead", clear_on_submit=True):
-        st.subheader("📌 Dados Pessoais & Contato")
         col1, col2 = st.columns(2)
         with col1:
             nome = st.text_input("Nome Completo do Cliente *")
             whatsapp = st.text_input("WhatsApp com DDD *", "+5535999999999")
         with col2:
-            origem = st.selectbox("Origem do Lead", OPCOES_ORIGEM)
-            urgencia = st.selectbox("Urgência / Tempo de Compra", OPCOES_URGENCIA)
-
-        st.divider()
-        st.subheader("💰 Orçamento & Condições Financeiras")
-        c_fin1, c_fin2 = st.columns(2)
-        with c_fin1:
+            bairros_interesse = st.multiselect("Bairros de Interesse (Passos-MG) *", BAIRROS_PASSOS, default=["Centro"])
             orcamento = st.number_input("Orçamento Máximo (R$) *", min_value=0.0, value=500000.0, step=10000.0)
-        with c_fin2:
-            forma_pagamento = st.selectbox("Forma de Pagamento", OPCOES_PAGAMENTO)
-
-        st.divider()
-        st.subheader("🏠 Preferências & Requisitos Mínimos para Match")
-        bairros_interesse = st.multiselect("Bairros de Interesse (Passos-MG) *", BAIRROS_PASSOS, default=["Centro"])
         
-        m1, m2, m3, m4 = st.columns(4)
-        with m1:
-            min_quartos = st.number_input("Mínimo de Quartos", min_value=0, value=0, step=1)
-        with m2:
-            min_suites = st.number_input("Mínimo de Suítes", min_value=0, value=0, step=1)
-        with m3:
-            min_banheiros = st.number_input("Mínimo de Banheiros", min_value=0, value=0, step=1)
-        with m4:
-            min_vagas = st.number_input("Mínimo de Vagas", min_value=0, value=0, step=1)
-
         submitted_lead = st.form_submit_button("💾 Salvar Lead", use_container_width=True)
         if submitted_lead:
             if not nome or not bairros_interesse:
@@ -454,24 +417,17 @@ elif menu == "👤 Novo Lead":
                     "whatsapp": whatsapp,
                     "bairros_interesse": bairros_interesse,
                     "orcamento_maximo": orcamento,
-                    "forma_pagamento": forma_pagamento,
-                    "urgencia": urgencia,
-                    "origem": origem,
-                    "min_quartos": min_quartos,
-                    "min_suites": min_suites,
-                    "min_banheiros": min_banheiros,
-                    "min_vagas": min_vagas,
                     "status": "Em busca"
                 }
                 supabase.table("leads").insert(dados_lead).execute()
                 st.success(f"✅ Lead **{nome}** cadastrado com sucesso para {len(bairros_interesse)} bairro(s)!")
 
 # ==========================================
-# 👥 ABA 5: GERENCIAR & EDITAR LEADS
+# 👥 ABA 5: GERENCIAR LEADS
 # ==========================================
 elif menu == "👥 Gerenciar Leads":
     st.title("👥 Gerenciamento de Leads")
-    st.write("Consulte e altere preferências, qualificações ou orçamento dos clientes.")
+    st.write("Consulte e altere preferências, nome, telefone ou orçamento dos clientes.")
     
     if st.button("🔄 Atualizar Lista de Leads"):
         st.rerun()
@@ -492,17 +448,8 @@ elif menu == "👥 Gerenciar Leads":
                 with col1:
                     st.subheader(f"👤 {lead.get('nome')} — {lead.get('whatsapp')}")
                     bairros_str = ", ".join(lead.get('bairros_interesse', [])) if lead.get('bairros_interesse') else "Nenhum"
-                    st.write(f"📍 **Bairros:** {bairros_str}")
-                    st.write(f"💰 **Orçamento:** R$ {lead.get('orcamento_maximo', 0):,.2f} | **Pagamento:** {lead.get('forma_pagamento', 'N/I')}")
-                    st.write(f"⏱️ **Urgência:** {lead.get('urgencia', 'N/I')} | 📢 **Origem:** {lead.get('origem', 'N/I')}")
-                    
-                    reqs = []
-                    if lead.get('min_quartos'): reqs.append(f"🛏️ Mín. {lead.get('min_quartos')} quarto(s)")
-                    if lead.get('min_suites'): reqs.append(f"🚿 Mín. {lead.get('min_suites')} suíte(s)")
-                    if lead.get('min_banheiros'): reqs.append(f"🚽 Mín. {lead.get('min_banheiros')} banheiro(s)")
-                    if lead.get('min_vagas'): reqs.append(f"🚗 Mín. {lead.get('min_vagas')} vaga(s)")
-                    if reqs:
-                        st.caption(f"Exigências: {' | '.join(reqs)}")
+                    st.write(f"📍 **Bairros de Interesse:** {bairros_str}")
+                    st.write(f"💰 **Orçamento Máximo:** R$ {lead.get('orcamento_maximo', 0):,.2f}")
                 
                 with col2:
                     novo_status_lead = st.radio(
@@ -524,48 +471,19 @@ elif menu == "👥 Gerenciar Leads":
                         with el_c1:
                             e_nome = st.text_input("Nome Completo", value=lead.get('nome', ''), key=f"e_nome_{lead_id}")
                             e_whatsapp = st.text_input("WhatsApp", value=lead.get('whatsapp', ''), key=f"e_wa_{lead_id}")
-                            
-                            pag_idx = OPCOES_PAGAMENTO.index(lead.get('forma_pagamento')) if lead.get('forma_pagamento') in OPCOES_PAGAMENTO else 0
-                            e_forma_pagamento = st.selectbox("Forma de Pagamento", OPCOES_PAGAMENTO, index=pag_idx, key=f"e_fp_{lead_id}")
-                            
-                            urg_idx = OPCOES_URGENCIA.index(lead.get('urgencia')) if lead.get('urgencia') in OPCOES_URGENCIA else 0
-                            e_urgencia = st.selectbox("Urgência / Tempo de Compra", OPCOES_URGENCIA, index=urg_idx, key=f"e_urg_{lead_id}")
-
                         with el_c2:
                             bairros_atuais = lead.get('bairros_interesse', [])
                             bairros_validos = [b for b in bairros_atuais if b in BAIRROS_PASSOS]
                             e_bairros = st.multiselect("Bairros de Interesse", BAIRROS_PASSOS, default=bairros_validos, key=f"e_bairros_{lead_id}")
                             e_orcamento = st.number_input("Orçamento Máximo (R$)", min_value=0.0, value=float(lead.get('orcamento_maximo', 0.0)), step=10000.0, key=f"e_orc_{lead_id}")
-                            
-                            ori_idx = OPCOES_ORIGEM.index(lead.get('origem')) if lead.get('origem') in OPCOES_ORIGEM else 0
-                            e_origem = st.selectbox("Origem do Lead", OPCOES_ORIGEM, index=ori_idx, key=f"e_ori_{lead_id}")
-
-                        st.divider()
-                        st.write("**Requisitos Mínimos para Match:**")
-                        em1, em2, em3, em4 = st.columns(4)
-                        with em1:
-                            e_min_q = st.number_input("Mín. Quartos", min_value=0, value=int(lead.get('min_quartos', 0) or 0), step=1, key=f"e_mq_{lead_id}")
-                        with em2:
-                            e_min_s = st.number_input("Mín. Suítes", min_value=0, value=int(lead.get('min_suites', 0) or 0), step=1, key=f"e_ms_{lead_id}")
-                        with em3:
-                            e_min_b = st.number_input("Mín. Banheiros", min_value=0, value=int(lead.get('min_banheiros', 0) or 0), step=1, key=f"e_mb_{lead_id}")
-                        with em4:
-                            e_min_v = st.number_input("Mín. Vagas", min_value=0, value=int(lead.get('min_vagas', 0) or 0), step=1, key=f"e_mv_{lead_id}")
-
+                        
                         btn_salvar_lead = st.form_submit_button("💾 Salvar Alterações no Lead", use_container_width=True)
                         if btn_salvar_lead:
                             dados_lead_atualizados = {
                                 "nome": e_nome,
                                 "whatsapp": e_whatsapp,
                                 "bairros_interesse": e_bairros,
-                                "orcamento_maximo": e_orcamento,
-                                "forma_pagamento": e_forma_pagamento,
-                                "urgencia": e_urgencia,
-                                "origem": e_origem,
-                                "min_quartos": e_min_q,
-                                "min_suites": e_min_s,
-                                "min_banheiros": e_min_b,
-                                "min_vagas": e_min_v
+                                "orcamento_maximo": e_orcamento
                             }
                             supabase.table("leads").update(dados_lead_atualizados).eq("id", lead_id).execute()
                             st.success("✅ Dados do Lead atualizados com sucesso!")
@@ -574,11 +492,11 @@ elif menu == "👥 Gerenciar Leads":
                 st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# 🎯 ABA 6: MATCH INTELIGENTE
+# 🎯 ABA 6: MATCH INTELIGENTE (APENAS BAIRRO E VALOR)
 # ==========================================
 elif menu == "🎯 Encontrar Matches":
     st.title("🎯 Automação de Match Imobiliário")
-    st.write("Cruza os bairros, orçamento e exigências mínimas do cliente com os imóveis disponíveis.")
+    st.write("Cruza os **bairros de interesse** e o **orçamento máximo** do cliente com os imóveis disponíveis.")
     st.divider()
 
     if not leads_data:
@@ -610,31 +528,19 @@ elif menu == "🎯 Encontrar Matches":
             whatsapp_num = lead.get('whatsapp', '').replace("+", "").replace(" ", "").replace("-", "")
             orcamento = lead.get('orcamento_maximo', 0)
             bairros = lead.get('bairros_interesse', [])
-            min_q = lead.get('min_quartos', 0) or 0
-            min_s = lead.get('min_suites', 0) or 0
-            min_b = lead.get('min_banheiros', 0) or 0
-            min_v = lead.get('min_vagas', 0) or 0
             
             bairros_texto = ", ".join(bairros) if bairros else "Qualquer Bairro"
-            st.caption(
-                f"💰 Orçamento Máx: **R$ {orcamento:,.2f}** | 📍 Bairros: **{bairros_texto}** | "
-                f"🎯 Filtros Mínimos: {min_q}Q / {min_s}S / {min_b}B / {min_v}V"
-            )
+            st.caption(f"💰 Orçamento Máx: **R$ {orcamento:,.2f}** | 📍 Bairros Desejados: **{bairros_texto}**")
             
             imoveis_disponiveis = [i for i in imoveis_data if i.get('status', 'Disponível') == 'Disponível']
             
             matches = []
             for imovel in imoveis_disponiveis:
+                # Crivo de Match: Apenas Bairro e Valor
                 preco_ok = imovel.get('valor_venda', 0) <= orcamento
                 bairro_ok = (not bairros) or (imovel.get('bairro') in bairros)
                 
-                # Validação dos requisitos mínimos
-                q_ok = (imovel.get('quartos', 0) or 0) >= min_q
-                s_ok = (imovel.get('suites', 0) or 0) >= min_s
-                b_ok = (imovel.get('banheiros', 0) or 0) >= min_b
-                v_ok = (imovel.get('vagas_garagem', 0) or 0) >= min_v
-                
-                if preco_ok and bairro_ok and q_ok and s_ok and b_ok and v_ok:
+                if preco_ok and bairro_ok:
                     matches.append(imovel)
             
             if matches:
@@ -674,12 +580,12 @@ elif menu == "🎯 Encontrar Matches":
                         texto_msg = (
                             f"Olá {lead.get('nome')}! Tudo bem?\n\n"
                             f"Encontrei uma opção de *{m.get('tipo')}* no bairro *{m.get('bairro')}* "
-                            f"por *R$ {m.get('valor_venda'):,.2f}* que atende o seu perfil e exigências."
+                            f"por *R$ {m.get('valor_venda'):,.2f}* que encaixa no seu perfil."
                             f"{texto_caracteristicas}\n\n"
                             f"Posso te enviar as fotos para você dar uma olhada?"
                         )
                         link_wa = f"https://wa.me/{whatsapp_num}?text={urllib.parse.quote(texto_msg)}"
                         st.markdown(f"[📲 **Enviar WhatsApp**]({link_wa})")
             else:
-                st.warning("Nenhum imóvel disponível atende a todos os critérios/requisitos deste lead.")
+                st.warning("Nenhum imóvel disponível compatível nos bairros selecionados e dentro do orçamento.")
             st.divider()
