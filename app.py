@@ -133,7 +133,7 @@ if menu == "📊 Dashboard":
         st.metric(label="🔥 Matches Ativos", value=total_matches)
 
 # ==========================================
-# 📋 ABA 2: IMÓVEIS CADASTRADOS (FILTROS SEPARADOS POR CÓDIGO E BAIRRO)
+# 📋 ABA 2: IMÓVEIS CADASTRADOS
 # ==========================================
 elif menu == "📋 Imóveis Cadastrados":
     st.title("📋 Inventário de Imóveis")
@@ -457,7 +457,7 @@ elif menu == "👤 Novo Lead":
                 st.success(f"✅ Lead **{nome}** cadastrado com sucesso para {len(bairros_interesse)} bairro(s)!")
 
 # ==========================================
-# 👥 ABA 5: GERENCIAR LEADS (COM FILTROS E BUSCA)
+# 👥 ABA 5: GERENCIAR LEADS
 # ==========================================
 elif menu == "👥 Gerenciar Leads":
     st.title("👥 Gerenciamento de Leads")
@@ -552,100 +552,112 @@ elif menu == "👥 Gerenciar Leads":
                 st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# 🎯 ABA 6: MATCH INTELIGENTE (APENAS BAIRRO E VALOR)
+# 🎯 ABA 6: MATCH INTELIGENTE (EXIBE SOMENTE COM MATCHES)
 # ==========================================
 elif menu == "🎯 Encontrar Matches":
     st.title("🎯 Automação de Match Imobiliário")
-    st.write("Cruza os **bairros de interesse** e o **orçamento máximo** do cliente com os imóveis disponíveis.")
+    st.write("Exibindo **apenas clientes ativos** que possuem imóveis compatíveis disponíveis.")
     st.divider()
 
-    if not leads_data:
-        st.info("Nenhum lead cadastrado para realizar o cruzamento.")
+    # Imóveis que estão com status 'Disponível'
+    imoveis_disponiveis = [i for i in imoveis_data if i.get('status', 'Disponível') == 'Disponível']
+
+    # Filtrar apenas leads ativos que estão 'Em busca'
+    leads_em_busca = [l for l in leads_data if l.get('status', 'Em busca') == 'Em busca']
+
+    total_leads_com_match = 0
+
+    if not leads_em_busca:
+        st.info("Nenhum lead ativo no momento.")
     else:
-        for lead in leads_data:
-            status_lead = lead.get('status', 'Em busca')
-            
-            st.subheader(f"👤 Cliente: {lead.get('nome', 'Sem nome')}")
-            
-            novo_status_lead = st.radio(
-                "Status do Cliente:",
-                ["Em busca", "Já comprou"],
-                index=0 if status_lead == "Em busca" else 1,
-                key=f"status_lead_match_{lead.get('id')}",
-                horizontal=True
-            )
-            
-            if novo_status_lead != status_lead:
-                supabase.table("leads").update({"status": novo_status_lead}).eq("id", lead.get("id")).execute()
-                st.success(f"Status do Lead atualizado para: **{novo_status_lead}**!")
-                st.rerun()
-
-            if novo_status_lead == "Já comprou":
-                st.success("🎉 Cliente com compra concluída!")
-                st.divider()
-                continue
-
-            whatsapp_num = lead.get('whatsapp', '').replace("+", "").replace(" ", "").replace("-", "")
+        for lead in leads_em_busca:
             orcamento = lead.get('orcamento_maximo', 0)
             bairros = lead.get('bairros_interesse', [])
             
-            bairros_texto = ", ".join(bairros) if bairros else "Qualquer Bairro"
-            st.caption(f"💰 Orçamento Máx: **R$ {orcamento:,.2f}** | 📍 Bairros Desejados: **{bairros_texto}**")
-            
-            imoveis_disponiveis = [i for i in imoveis_data if i.get('status', 'Disponível') == 'Disponível']
-            
+            # Cruzamento Bairro e Valor
             matches = []
             for imovel in imoveis_disponiveis:
-                # Crivo de Match: Apenas Bairro e Valor
                 preco_ok = imovel.get('valor_venda', 0) <= orcamento
                 bairro_ok = (not bairros) or (imovel.get('bairro') in bairros)
                 
                 if preco_ok and bairro_ok:
                     matches.append(imovel)
             
+            # MOSTRAR SOMENTE SE HOUVER PELO MENOS 1 MATCH
             if matches:
-                for m in matches:
-                    c1, c2 = st.columns([3, 1])
-                    with c1:
-                        st.write(f"🏠 **{m.get('tipo')} [{m.get('codigo_imovel')}]** — R$ {m.get('valor_venda'):,.2f} no bairro **{m.get('bairro')}**")
-                    with c2:
-                        caracteristicas = []
-                        if m.get('quartos'):
-                            caracteristicas.append(f"🛏️ {m.get('quartos')} quarto(s)")
-                        if m.get('suites'):
-                            caracteristicas.append(f"🚿 {m.get('suites')} suíte(s)")
-                        if m.get('banheiros'):
-                            caracteristicas.append(f"🚽 {m.get('banheiros')} banheiro(s)")
-                        if m.get('vagas_garagem'):
-                            caracteristicas.append(f"🚗 {m.get('vagas_garagem')} vaga(s) de garagem")
-                        if m.get('garagem_coberta'):
-                            caracteristicas.append("🚘 Garagem coberta")
-                        if m.get('area_gourmet'):
-                            caracteristicas.append("🍖 Área gourmet / churrasqueira")
-                        if m.get('sala'):
-                            caracteristicas.append("🛋️ Sala")
-                        if m.get('copa'):
-                            caracteristicas.append("🍽️ Copa")
-                        if m.get('cozinha'):
-                            caracteristicas.append("🍳 Cozinha")
-                        if m.get('area_construida'):
-                            caracteristicas.append(f"🏗️ Área construída: {m.get('area_construida')}m²")
-                        if m.get('area_terreno'):
-                            caracteristicas.append(f"📐 Terreno: {m.get('area_terreno')}m²")
-
-                        texto_caracteristicas = ""
-                        if caracteristicas:
-                            texto_caracteristicas = "\n\n*Destaques do Imóvel:*\n• " + "\n• ".join(caracteristicas)
-
-                        texto_msg = (
-                            f"Olá {lead.get('nome')}! Tudo bem?\n\n"
-                            f"Encontrei uma opção de *{m.get('tipo')}* no bairro *{m.get('bairro')}* "
-                            f"por *R$ {m.get('valor_venda'):,.2f}* que encaixa no seu perfil."
-                            f"{texto_caracteristicas}\n\n"
-                            f"Posso te enviar as fotos para você dar uma olhada?"
+                total_leads_com_match += 1
+                whatsapp_num = lead.get('whatsapp', '').replace("+", "").replace(" ", "").replace("-", "")
+                bairros_texto = ", ".join(bairros) if bairros else "Qualquer Bairro"
+                
+                with st.container():
+                    st.markdown('<div class="stCard">', unsafe_allow_html=True)
+                    
+                    c_lead, c_status = st.columns([3, 1])
+                    with c_lead:
+                        st.subheader(f"👤 {lead.get('nome')} — {lead.get('whatsapp')}")
+                        st.caption(f"💰 Orçamento Máx: **R$ {orcamento:,.2f}** | 📍 Bairros Desejados: **{bairros_texto}**")
+                    
+                    with c_status:
+                        novo_status_lead = st.radio(
+                            "Status:",
+                            ["Em busca", "Já comprou"],
+                            index=0,
+                            key=f"status_lead_match_{lead.get('id')}",
+                            horizontal=True
                         )
-                        link_wa = f"https://wa.me/{whatsapp_num}?text={urllib.parse.quote(texto_msg)}"
-                        st.markdown(f"[📲 **Enviar WhatsApp**]({link_wa})")
-            else:
-                st.warning("Nenhum imóvel disponível compatível nos bairros selecionados e dentro do orçamento.")
-            st.divider()
+                        if novo_status_lead == "Já comprou":
+                            supabase.table("leads").update({"status": "Já comprou"}).eq("id", lead.get("id")).execute()
+                            st.success("Status alterado para 'Já comprou'!")
+                            st.rerun()
+
+                    st.markdown("---")
+                    st.write(f"🔥 **{len(matches)} Imóvel(is) Compatível(is) Encontrado(s):**")
+                    
+                    for m in matches:
+                        c1, c2 = st.columns([3, 1])
+                        with c1:
+                            st.write(f"🏠 **{m.get('tipo')} [{m.get('codigo_imovel')}]** — **R$ {m.get('valor_venda'):,.2f}** no bairro **{m.get('bairro')}**")
+                        with c2:
+                            caracteristicas = []
+                            if m.get('quartos'):
+                                caracteristicas.append(f"🛏️ {m.get('quartos')} quarto(s)")
+                            if m.get('suites'):
+                                caracteristicas.append(f"🚿 {m.get('suites')} suíte(s)")
+                            if m.get('banheiros'):
+                                caracteristicas.append(f"🚽 {m.get('banheiros')} banheiro(s)")
+                            if m.get('vagas_garagem'):
+                                caracteristicas.append(f"🚗 {m.get('vagas_garagem')} vaga(s) de garagem")
+                            if m.get('garagem_coberta'):
+                                caracteristicas.append("🚘 Garagem coberta")
+                            if m.get('area_gourmet'):
+                                caracteristicas.append("🍖 Área gourmet / churrasqueira")
+                            if m.get('sala'):
+                                caracteristicas.append("🛋️ Sala")
+                            if m.get('copa'):
+                                caracteristicas.append("🍽️ Copa")
+                            if m.get('cozinha'):
+                                caracteristicas.append("🍳 Cozinha")
+                            if m.get('area_construida'):
+                                caracteristicas.append(f"🏗️ Área construída: {m.get('area_construida')}m²")
+                            if m.get('area_terreno'):
+                                caracteristicas.append(f"📐 Terreno: {m.get('area_terreno')}m²")
+
+                            texto_caracteristicas = ""
+                            if caracteristicas:
+                                texto_caracteristicas = "\n\n*Destaques do Imóvel:*\n• " + "\n• ".join(caracteristicas)
+
+                            texto_msg = (
+                                f"Olá {lead.get('nome')}! Tudo bem?\n\n"
+                                f"Encontrei uma opção de *{m.get('tipo')}* no bairro *{m.get('bairro')}* "
+                                f"por *R$ {m.get('valor_venda'):,.2f}* que encaixa no seu perfil."
+                                f"{texto_caracteristicas}\n\n"
+                                f"Posso te enviar as fotos para você dar uma olhada?"
+                            )
+                            link_wa = f"https://wa.me/{whatsapp_num}?text={urllib.parse.quote(texto_msg)}"
+                            st.markdown(f"[📲 **Enviar WhatsApp**]({link_wa})")
+
+                    st.markdown('</div>', unsafe_allow_html=True)
+
+        if total_leads_com_match == 0:
+            st.info("Nenhum match ativo encontrado no momento entre seus clientes e imóveis disponíveis.")
+            
