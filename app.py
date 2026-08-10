@@ -1,16 +1,27 @@
 import streamlit as st
 from supabase import create_client
 import urllib.parse
+import os
+
+# ==========================================
+# 🎨 PALETA DE CORES MENDES & SOARES (EXTRAÍDA DA LOGO)
+# ==========================================
+COR_AZUL_MARINHO = "#181e29"  # Fundo da logo / Sidebar / Títulos
+COR_DOURADO = "#c59b27"       # Dourado vibrante dos botões e destaques
+COR_DOURADO_HOVER = "#a37f1e" # Dourado mais escuro para efeito ao passar o mouse
+COR_FUNDO_PAGINA = "#f4f6f8"   # Cinza suave premium para leitura agradável
+COR_CARD = "#ffffff"          # Fundo branco para os cards
+COR_TEXTO = "#101620"         # Texto escuro refinado
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
-    page_title="CRM Imobiliário | Match & Vendas",
-    page_icon="🏢",
+    page_title="Mendes & Soares | Engenharia e Imóveis",
+    page_icon="🏠",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# --- LISTA DE BAIRROS DE PASSOS - MG (ORDEM ALFABÉTICA) ---
+# --- LISTA DE BAIRROS DE PASSOS - MG ---
 BAIRROS_PASSOS = sorted([
     "Aclimação", "Alto dos Maias", "Alvorada", "Antenas", "Aroeiras",
     "Bela Vista 1 e 2", "Belo Horizonte", "Califórnia", "Canadá 1, 2 e 3",
@@ -47,38 +58,92 @@ def carregar_leads():
 def gerar_codigo_imovel_auto():
     imoveis = carregar_imoveis()
     proximo_num = len(imoveis) + 1
-    return f"IMO-{proximo_num:03d}"
+    return f"MS-{proximo_num:03d}"
 
-# --- ESTILIZAÇÃO CSS CUSTOMIZADA ---
-st.markdown("""
+# --- ESTILIZAÇÃO CSS PERSONALIZADA MENDES & SOARES ---
+st.markdown(f"""
     <style>
-    .main { background-color: #f8fafc; }
-    .stCard {
-        background-color: #ffffff;
+    /* Fundo da aplicação */
+    .stApp {{
+        background-color: {COR_FUNDO_PAGINA};
+        color: {COR_TEXTO};
+    }}
+    
+    /* Estilização da Sidebar Lateral */
+    section[data-testid="stSidebar"] {{
+        background-color: {COR_AZUL_MARINHO} !important;
+    }}
+    section[data-testid="stSidebar"] * {{
+        color: #ffffff !important;
+    }}
+    section[data-testid="stSidebar"] .stRadio label {{
+        color: #e2e8f0 !important;
+    }}
+
+    /* Estilização dos Cards do CRM */
+    .stCard {{
+        background-color: {COR_CARD};
         border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-        margin-bottom: 20px;
-        border: 1px solid #e2e8f0;
-    }
-    .price-badge {
-        background-color: #0284c7;
-        color: white;
-        padding: 4px 12px;
+        padding: 24px;
+        box-shadow: 0 4px 15px rgba(24, 30, 41, 0.06);
+        margin-bottom: 24px;
+        border-left: 6px solid {COR_DOURADO};
+        border-top: 1px solid #e2e8f0;
+        border-right: 1px solid #e2e8f0;
+        border-bottom: 1px solid #e2e8f0;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }}
+    .stCard:hover {{
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(24, 30, 41, 0.12);
+    }}
+
+    /* Badge Elegante de Preço */
+    .price-badge {{
+        background: linear-gradient(135deg, {COR_DOURADO}, {COR_DOURADO_HOVER});
+        color: #ffffff;
+        padding: 8px 18px;
         border-radius: 20px;
-        font-weight: bold;
-        font-size: 0.9em;
-    }
-    .feature-tag {
+        font-weight: 700;
+        font-size: 1.1em;
+        display: inline-block;
+        text-align: center;
+        box-shadow: 0 2px 6px rgba(197, 155, 39, 0.3);
+    }}
+
+    /* Tags de Diferenciais */
+    .feature-tag {{
         background-color: #f1f5f9;
-        color: #334155;
-        padding: 3px 8px;
+        color: {COR_AZUL_MARINHO};
+        padding: 5px 12px;
         border-radius: 6px;
         font-size: 0.85em;
-        margin-right: 5px;
+        font-weight: 600;
+        margin-right: 6px;
         display: inline-block;
-        margin-bottom: 5px;
-    }
+        margin-bottom: 6px;
+        border: 1px solid #cbd5e1;
+    }}
+
+    /* Botões Primários Estilizados em Dourado */
+    div.stButton > button[kind="primary"] {{
+        background-color: {COR_DOURADO} !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 8px !important;
+        font-weight: bold !important;
+        transition: all 0.3s ease !important;
+    }}
+    div.stButton > button[kind="primary"]:hover {{
+        background-color: {COR_DOURADO_HOVER} !important;
+        box-shadow: 0 4px 12px rgba(197, 155, 39, 0.4) !important;
+    }}
+
+    /* Títulos */
+    h1, h2, h3 {{
+        color: {COR_AZUL_MARINHO} !important;
+        font-weight: 700 !important;
+    }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -86,26 +151,31 @@ st.markdown("""
 imoveis_data = carregar_imoveis()
 leads_data = carregar_leads()
 
-# --- MENU LATERAL ---
-st.sidebar.image("https://img.icons8.com/color/96/real-estate.png", width=70)
-st.sidebar.title("CRM Imobiliário")
-st.sidebar.caption("Passos - MG | Gestão Inteligente")
+# --- MENU LATERAL COM A LOGO MENDES & SOARES ---
+with st.sidebar:
+    if os.path.exists("logo.png"):
+        st.image("logo.png", use_container_width=True)
+    else:
+        st.markdown(f"<h2 style='text-align: center; color:{COR_DOURADO};'>MENDES & SOARES</h2>", unsafe_allow_html=True)
+        st.caption("<p style='text-align: center; color: #cbd5e1;'>Engenharia e Imóveis</p>", unsafe_allow_html=True)
+    
+    st.divider()
 
-menu = st.sidebar.radio(
-    "Navegação",
-    ["📊 Dashboard", "📋 Imóveis Cadastrados", "📝 Novo Imóvel", "👤 Novo Lead", "👥 Gerenciar Leads", "🎯 Encontrar Matches"],
-    index=0
-)
+    menu = st.radio(
+        "Navegação do Sistema:",
+        ["📊 Dashboard", "📋 Imóveis Cadastrados", "📝 Novo Imóvel", "👤 Novo Lead", "👥 Gerenciar Leads", "🎯 Encontrar Matches"],
+        index=0
+    )
 
-st.sidebar.divider()
-st.sidebar.info("📍 **Foco na região de Passos - MG**")
+    st.divider()
+    st.markdown("<p style='text-align: center; font-size: 0.9em; color: #94a3b8;'>📍 Passos - MG<br>📞 (35) 9 9810-2465</p>", unsafe_allow_html=True)
 
 # ==========================================
 # 📊 ABA 1: DASHBOARD
 # ==========================================
 if menu == "📊 Dashboard":
-    st.title("📊 Painel Geral de Vendas")
-    st.write("Métricas em tempo real sobre seu inventário e clientes em Passos-MG.")
+    st.title("📊 Painel Geral — Mendes & Soares")
+    st.write("Métricas operacionais e gestão estratégica em tempo real.")
     st.divider()
 
     col1, col2, col3, col4 = st.columns(4)
@@ -137,14 +207,13 @@ if menu == "📊 Dashboard":
 # ==========================================
 elif menu == "📋 Imóveis Cadastrados":
     st.title("📋 Inventário de Imóveis")
-    st.write("Consulte, filtre, gerencie, edite e remova imóveis cadastrados em Passos-MG.")
+    st.write("Consulte, filtre e gerencie seu catálogo de imóveis em Passos-MG.")
     
-    # --- BARRA DE FILTROS SEPARADOS E BUSCA ---
     with st.expander("🔍 **Filtros e Busca de Imóveis**", expanded=True):
         f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns([1.2, 1.5, 1.2, 1.2, 2])
         
         with f_col1:
-            busca_codigo = st.text_input("🔎 Código", placeholder="Ex: IMO-001", key="busca_codigo")
+            busca_codigo = st.text_input("🔎 Código", placeholder="Ex: MS-001", key="busca_codigo")
         with f_col2:
             filtro_bairro_imovel = st.selectbox("📍 Bairro", ["Todos"] + BAIRROS_PASSOS, key="filtro_bairro_imovel")
         with f_col3:
@@ -158,25 +227,20 @@ elif menu == "📋 Imóveis Cadastrados":
 
     st.divider()
 
-    # Aplicação dos Filtros
     imoveis_filtrados = imoveis_data
-    
     if busca_codigo:
         termo_cod = busca_codigo.lower().strip()
         imoveis_filtrados = [i for i in imoveis_filtrados if termo_cod in i.get('codigo_imovel', '').lower()]
-        
     if filtro_bairro_imovel != "Todos":
         imoveis_filtrados = [i for i in imoveis_filtrados if i.get('bairro') == filtro_bairro_imovel]
-
     if filtro_tipo != "Todos":
         imoveis_filtrados = [i for i in imoveis_filtrados if i.get('tipo') == filtro_tipo]
-        
     if filtro_status != "Todos":
         imoveis_filtrados = [i for i in imoveis_filtrados if i.get('status', 'Disponível') == filtro_status]
     
     imoveis_filtrados = [i for i in imoveis_filtrados if float(i.get('valor_venda', 0)) <= filtro_preco_max]
 
-    st.caption(f"Exibindo **{len(imoveis_filtrados)}** de **{len(imoveis_data)}** imóveis encontrados.")
+    st.caption(f"Exibindo **{len(imoveis_filtrados)}** de **{len(imoveis_data)}** imóveis.")
 
     if not imoveis_filtrados:
         st.info("Nenhum imóvel encontrado com os filtros selecionados.")
@@ -202,7 +266,6 @@ elif menu == "📋 Imóveis Cadastrados":
                             st.session_state[key_foto] = 0
 
                         st.image(fotos_urls[foto_idx], use_container_width=True)
-                        
                         if len(fotos_urls) > 1:
                             btn_prev, btn_info, btn_next = st.columns([1, 2, 1])
                             with btn_prev:
@@ -216,12 +279,12 @@ elif menu == "📋 Imóveis Cadastrados":
                                     st.session_state[key_foto] = (foto_idx + 1) % len(fotos_urls)
                                     st.rerun()
                     else:
-                        st.image("https://via.placeholder.com/400x300?text=Sem+Foto", use_container_width=True)
+                        st.image("https://via.placeholder.com/400x300?text=Mendes+%26+Soares", use_container_width=True)
                 
                 with col2:
-                    c_title, c_badge = st.columns([3, 1])
+                    c_title, c_badge = st.columns([3, 1.2])
                     with c_title:
-                        st.subheader(f"{imovel.get('tipo')} — Cod: **{imovel.get('codigo_imovel')}**")
+                        st.subheader(f"{imovel.get('tipo')} — Cód: **{imovel.get('codigo_imovel')}**")
                     with c_badge:
                         st.markdown(f'<span class="price-badge">R$ {imovel.get("valor_venda", 0):,.2f}</span>', unsafe_allow_html=True)
                     
@@ -229,7 +292,7 @@ elif menu == "📋 Imóveis Cadastrados":
                     
                     detalhes = f"🛏️ {imovel.get('quartos', 0)} Quarto(s) | 🚿 {imovel.get('suites', 0)} Suíte(s) | 🚽 {imovel.get('banheiros', 0)} Banheiro(s) | 🚗 {imovel.get('vagas_garagem', 0)} Vaga(s)"
                     if imovel.get('area_terreno'):
-                        detalhes += f" | 📐 Terreno: {imovel.get('area_terreno')} m²"
+                        detalhes += f" | 📐 Lote: {imovel.get('area_terreno')} m²"
                     if imovel.get('area_construida'):
                         detalhes += f" | 🏗️ Área Const.: {imovel.get('area_construida')} m²"
                     
@@ -263,19 +326,18 @@ elif menu == "📋 Imóveis Cadastrados":
 
                 # --- EXCLUIR IMÓVEL ---
                 with st.expander(f"🗑️ Excluir Imóvel {imovel.get('codigo_imovel')}"):
-                    st.warning("⚠️ Esta ação é permanente e removerá o imóvel da sua carteira.")
-                    confirma_excluir = st.checkbox("Confirmar que desejo excluir este imóvel", key=f"chk_del_{imovel_id}")
-                    if st.button("🚨 Confirmar Exclusão Definitiva", key=f"btn_del_{imovel_id}", type="primary"):
+                    st.warning("⚠️ Esta ação é permanente e removerá o imóvel da base de dados.")
+                    confirma_excluir = st.checkbox("Confirmar exclusão deste imóvel", key=f"chk_del_{imovel_id}")
+                    if st.button("🚨 Excluir Definitivamente", key=f"btn_del_{imovel_id}", type="primary"):
                         if confirma_excluir:
                             supabase.table("imoveis").delete().eq("id", imovel_id).execute()
                             st.success(f"Imóvel **{imovel.get('codigo_imovel')}** removido com sucesso!")
                             st.rerun()
 
                 # --- EDITAR IMÓVEL ---
-                with st.expander(f"✏️ Editar dados do imóvel {imovel.get('codigo_imovel')}"):
+                with st.expander(f"✏️ Editar imóvel {imovel.get('codigo_imovel')}"):
                     with st.form(key=f"form_edit_imovel_{imovel_id}"):
                         e_c1, e_c2, e_c3 = st.columns(3)
-                        
                         tipos_list = ["Casa", "Apartamento", "Terreno", "Sobrado", "Cobertura", "Sítio/Chácara"]
                         idx_tipo = tipos_list.index(imovel.get('tipo')) if imovel.get('tipo') in tipos_list else 0
                         idx_bairro = BAIRROS_PASSOS.index(imovel.get('bairro')) if imovel.get('bairro') in BAIRROS_PASSOS else 0
@@ -291,17 +353,12 @@ elif menu == "📋 Imóveis Cadastrados":
 
                         st.divider()
                         e_cq1, e_cq2, e_cq3, e_cq4 = st.columns(4)
-                        with e_cq1:
-                            e_quartos = st.number_input("Dormitórios / Quartos", min_value=0, value=int(imovel.get('quartos', 0) or 0), step=1, key=f"e_q_{imovel_id}")
-                        with e_cq2:
-                            e_suites = st.number_input("Suítes", min_value=0, value=int(imovel.get('suites', 0) or 0), step=1, key=f"e_s_{imovel_id}")
-                        with e_cq3:
-                            e_banheiros = st.number_input("Banheiros", min_value=0, value=int(imovel.get('banheiros', 0) or 0), step=1, key=f"e_b_{imovel_id}")
-                        with e_cq4:
-                            e_vagas = st.number_input("Vagas de Garagem", min_value=0, value=int(imovel.get('vagas_garagem', 0) or 0), step=1, key=f"e_v_{imovel_id}")
+                        with e_cq1: e_quartos = st.number_input("Dormitórios", min_value=0, value=int(imovel.get('quartos', 0) or 0), step=1, key=f"e_q_{imovel_id}")
+                        with e_cq2: e_suites = st.number_input("Suítes", min_value=0, value=int(imovel.get('suites', 0) or 0), step=1, key=f"e_s_{imovel_id}")
+                        with e_cq3: e_banheiros = st.number_input("Banheiros", min_value=0, value=int(imovel.get('banheiros', 0) or 0), step=1, key=f"e_b_{imovel_id}")
+                        with e_cq4: e_vagas = st.number_input("Vagas Garagem", min_value=0, value=int(imovel.get('vagas_garagem', 0) or 0), step=1, key=f"e_v_{imovel_id}")
 
                         st.divider()
-                        st.write("**Ambientes e Diferenciais:**")
                         e_c5, e_c6 = st.columns(2)
                         with e_c5:
                             e_sala = st.checkbox("Sala", value=bool(imovel.get('sala', True)), key=f"e_sala_{imovel_id}")
@@ -313,24 +370,15 @@ elif menu == "📋 Imóveis Cadastrados":
 
                         e_descricao = st.text_area("Descrição", value=imovel.get('descricao', ''), key=f"e_desc_{imovel_id}")
                         
-                        btn_salvar_edicao = st.form_submit_button("💾 Salvar Alterações no Imóvel", use_container_width=True)
+                        btn_salvar_edicao = st.form_submit_button("💾 Salvar Alterações", use_container_width=True, type="primary")
                         if btn_salvar_edicao:
                             dados_atualizados = {
-                                "tipo": e_tipo,
-                                "bairro": e_bairro,
-                                "valor_venda": e_valor,
-                                "quartos": e_quartos,
-                                "suites": e_suites,
-                                "banheiros": e_banheiros,
-                                "vagas_garagem": e_vagas,
-                                "garagem_coberta": e_garagem_coberta,
-                                "area_gourmet": e_area_gourmet,
-                                "sala": e_sala,
-                                "copa": e_copa,
-                                "cozinha": e_cozinha,
-                                "area_terreno": e_area_terreno,
-                                "area_construida": e_area_construida,
-                                "descricao": e_descricao
+                                "tipo": e_tipo, "bairro": e_bairro, "valor_venda": e_valor,
+                                "quartos": e_quartos, "suites": e_suites, "banheiros": e_banheiros,
+                                "vagas_garagem": e_vagas, "garagem_coberta": e_garagem_coberta,
+                                "area_gourmet": e_area_gourmet, "sala": e_sala, "copa": e_copa,
+                                "cozinha": e_cozinha, "area_terreno": e_area_terreno,
+                                "area_construida": e_area_construida, "descricao": e_descricao
                             }
                             supabase.table("imoveis").update(dados_atualizados).eq("id", imovel_id).execute()
                             st.success("✅ Imóvel atualizado com sucesso!")
@@ -343,7 +391,7 @@ elif menu == "📋 Imóveis Cadastrados":
 # ==========================================
 elif menu == "📝 Novo Imóvel":
     st.title("📝 Cadastrar Novo Imóvel")
-    st.write("Selecione o bairro de Passos-MG e preencha a ficha do imóvel.")
+    st.write("Adicione um novo imóvel ao inventário da Mendes & Soares.")
     st.divider()
 
     codigo_gerado = gerar_codigo_imovel_auto()
@@ -358,39 +406,33 @@ elif menu == "📝 Novo Imóvel":
             bairro = st.selectbox("Bairro (Passos-MG) *", BAIRROS_PASSOS)
             valor = st.number_input("Valor de Venda (R$) *", min_value=0.0, value=350000.0, step=10000.0)
         with c3:
-            area_terreno = st.number_input("Tamanho do Lote / Terreno (m²)", min_value=0.0, value=250.0, step=10.0)
+            area_terreno = st.number_input("Tamanho do Lote (m²)", min_value=0.0, value=250.0, step=10.0)
             area_construida = st.number_input("Área Construída (m²)", min_value=0.0, value=120.0, step=10.0)
 
         st.divider()
         st.subheader("🛏️ Cômodos e Vagas")
         c4, c5, c6, c7 = st.columns(4)
-        with c4:
-            quartos = st.number_input("Dormitórios / Quartos", min_value=0, value=3, step=1)
-        with c5:
-            suites = st.number_input("Suítes", min_value=0, value=1, step=1)
-        with c6:
-            banheiros = st.number_input("Banheiros (Total)", min_value=0, value=2, step=1)
-        with c7:
-            vagas = st.number_input("Vagas de Garagem", min_value=0, value=2, step=1)
+        with c4: quartos = st.number_input("Dormitórios / Quartos", min_value=0, value=3, step=1)
+        with c5: suites = st.number_input("Suítes", min_value=0, value=1, step=1)
+        with c6: banheiros = st.number_input("Banheiros (Total)", min_value=0, value=2, step=1)
+        with c7: vagas = st.number_input("Vagas de Garagem", min_value=0, value=2, step=1)
 
         st.divider()
         st.subheader("✨ Ambientes e Diferenciais")
         cd1, cd2 = st.columns(2)
         with cd1:
-            st.write("**Ambientes Presentes:**")
             sala = st.checkbox("Sala de Estar/Jantar", value=True)
             copa = st.checkbox("Copa", value=False)
             cozinha = st.checkbox("Cozinha", value=True)
         with cd2:
-            st.write("**Diferenciais:**")
             garagem_coberta = st.checkbox("🚘 Garagem Coberta")
             area_gourmet = st.checkbox("🍖 Área Gourmet / Churrasqueira")
 
         st.divider()
         descricao = st.text_area("📝 Descrição Geral / Observações")
-        fotos = st.file_uploader("📷 Fotos do Imóvel (JPG ou PNG)", type=["jpg", "png", "jpeg"], accept_multiple_files=True)
+        fotos = st.file_uploader("📷 Fotos do Imóvel", type=["jpg", "png", "jpeg"], accept_multiple_files=True)
         
-        submitted = st.form_submit_button("💾 Salvar Imóvel", use_container_width=True)
+        submitted = st.form_submit_button("💾 Salvar Imóvel", use_container_width=True, type="primary")
         
         if submitted:
             urls_fotos = []
@@ -402,100 +444,74 @@ elif menu == "📝 Novo Imóvel":
                     urls_fotos.append(url_publica)
             
             dados_imovel = {
-                "codigo_imovel": codigo_gerado,
-                "tipo": tipo,
-                "bairro": bairro,
-                "valor_venda": valor,
-                "quartos": quartos,
-                "suites": suites,
-                "banheiros": banheiros,
-                "vagas_garagem": vagas,
-                "garagem_coberta": garagem_coberta,
-                "area_gourmet": area_gourmet,
-                "sala": sala,
-                "copa": copa,
-                "cozinha": cozinha,
-                "area_terreno": area_terreno,
-                "area_construida": area_construida,
-                "descricao": descricao,
-                "fotos_urls": urls_fotos,
-                "status": "Disponível"
+                "codigo_imovel": codigo_gerado, "tipo": tipo, "bairro": bairro,
+                "valor_venda": valor, "quartos": quartos, "suites": suites,
+                "banheiros": banheiros, "vagas_garagem": vagas,
+                "garagem_coberta": garagem_coberta, "area_gourmet": area_gourmet,
+                "sala": sala, "copa": copa, "cozinha": cozinha,
+                "area_terreno": area_terreno, "area_construida": area_construida,
+                "descricao": descricao, "fotos_urls": urls_fotos, "status": "Disponível"
             }
             supabase.table("imoveis").insert(dados_imovel).execute()
-            st.success(f"✅ Imóvel **{codigo_gerado}** cadastrado com sucesso no bairro **{bairro}**!")
+            st.success(f"✅ Imóvel **{codigo_gerado}** cadastrado com sucesso!")
 
 # ==========================================
 # 👤 ABA 4: NOVO LEAD
 # ==========================================
 elif menu == "👤 Novo Lead":
     st.title("👤 Cadastrar Novo Lead")
-    st.write("Defina o nome, WhatsApp, orçamento e selecione os bairros de interesse do cliente.")
+    st.write("Cadastre novos clientes interessados em comprar imóveis.")
     st.divider()
 
     with st.form("form_lead", clear_on_submit=True):
         col1, col2 = st.columns(2)
         with col1:
             nome = st.text_input("Nome Completo do Cliente *")
-            whatsapp = st.text_input("WhatsApp com DDD *", "+5535999999999")
+            whatsapp = st.text_input("WhatsApp com DDD *", "+5535998102465")
         with col2:
             bairros_interesse = st.multiselect("Bairros de Interesse (Passos-MG) *", BAIRROS_PASSOS, default=["Centro"])
             orcamento = st.number_input("Orçamento Máximo (R$) *", min_value=0.0, value=500000.0, step=10000.0)
         
-        submitted_lead = st.form_submit_button("💾 Salvar Lead", use_container_width=True)
+        submitted_lead = st.form_submit_button("💾 Salvar Lead", use_container_width=True, type="primary")
         if submitted_lead:
             if not nome or not bairros_interesse:
-                st.error("Por favor, preencha o Nome e selecione pelo menos um Bairro de interesse.")
+                st.error("Por favor, preencha o Nome e escolha ao menos um Bairro de interesse.")
             else:
                 dados_lead = {
-                    "nome": nome,
-                    "whatsapp": whatsapp,
-                    "bairros_interesse": bairros_interesse,
-                    "orcamento_maximo": orcamento,
-                    "status": "Em busca"
+                    "nome": nome, "whatsapp": whatsapp, "bairros_interesse": bairros_interesse,
+                    "orcamento_maximo": orcamento, "status": "Em busca"
                 }
                 supabase.table("leads").insert(dados_lead).execute()
-                st.success(f"✅ Lead **{nome}** cadastrado com sucesso para {len(bairros_interesse)} bairro(s)!")
+                st.success(f"✅ Lead **{nome}** cadastrado com sucesso!")
 
 # ==========================================
 # 👥 ABA 5: GERENCIAR LEADS
 # ==========================================
 elif menu == "👥 Gerenciar Leads":
     st.title("👥 Gerenciamento de Leads")
-    st.write("Consulte, pesquise, filtre e altere preferências ou dados dos clientes.")
+    st.write("Gerencie e atualize o perfil de busca dos clientes.")
     
-    # --- BARRA DE FILTROS E BUSCA PARA LEADS ---
     with st.expander("🔍 **Filtros e Busca de Leads**", expanded=True):
         fl_col1, fl_col2, fl_col3 = st.columns([2, 1.5, 2.5])
-        
-        with fl_col1:
-            busca_lead = st.text_input("🔎 Pesquisar Nome ou WhatsApp", placeholder="Ex: João ou 35999...", key="busca_lead")
-        with fl_col2:
-            filtro_status_lead = st.selectbox("Status do Lead", ["Todos", "Em busca", "Já comprou"], index=1, key="filtro_status_lead")
-        with fl_col3:
-            filtro_bairro_lead = st.selectbox("Filtrar por Bairro de Interesse", ["Todos"] + BAIRROS_PASSOS, key="filtro_bairro_lead")
+        with fl_col1: busca_lead = st.text_input("🔎 Pesquisar Nome ou WhatsApp", key="busca_lead")
+        with fl_col2: filtro_status_lead = st.selectbox("Status", ["Todos", "Em busca", "Já comprou"], index=1, key="filtro_status_lead")
+        with fl_col3: filtro_bairro_lead = st.selectbox("Filtrar por Bairro", ["Todos"] + BAIRROS_PASSOS, key="filtro_bairro_lead")
 
     st.divider()
 
-    # Aplicação dos Filtros de Leads
     leads_filtrados = leads_data
     if busca_lead:
         termo_l = busca_lead.lower().strip()
-        leads_filtrados = [
-            l for l in leads_filtrados 
-            if termo_l in l.get('nome', '').lower() or termo_l in l.get('whatsapp', '').lower()
-        ]
+        leads_filtrados = [l for l in leads_filtrados if termo_l in l.get('nome', '').lower() or termo_l in l.get('whatsapp', '').lower()]
     if filtro_status_lead != "Todos":
         leads_filtrados = [l for l in leads_filtrados if l.get('status', 'Em busca') == filtro_status_lead]
     if filtro_bairro_lead != "Todos":
-        leads_filtrados = [
-            l for l in leads_filtrados 
-            if filtro_bairro_lead in l.get('bairros_interesse', [])
-        ]
+        leads_filtrados = [l for l in leads_filtrados if filtro_bairro_lead in l.get('bairros_interesse', [])]
 
-    st.caption(f"Exibindo **{len(leads_filtrados)}** de **{len(leads_data)}** clientes cadastrados.")
+    st.caption(f"Exibindo **{len(leads_filtrados)}** de **{len(leads_data)}** clientes.")
 
     if not leads_filtrados:
-        st.info("Nenhum lead encontrado com os filtros selecionados.")
+        st.info("Nenhum lead encontrado.")
     else:
         for lead in leads_filtrados:
             lead_id = lead.get('id')
@@ -504,7 +520,6 @@ elif menu == "👥 Gerenciar Leads":
             with st.container():
                 st.markdown('<div class="stCard">', unsafe_allow_html=True)
                 col1, col2 = st.columns([3, 1])
-                
                 with col1:
                     st.subheader(f"👤 {lead.get('nome')} — {lead.get('whatsapp')}")
                     bairros_str = ", ".join(lead.get('bairros_interesse', [])) if lead.get('bairros_interesse') else "Nenhum"
@@ -512,59 +527,46 @@ elif menu == "👥 Gerenciar Leads":
                     st.write(f"💰 **Orçamento Máximo:** R$ {lead.get('orcamento_maximo', 0):,.2f}")
                 
                 with col2:
-                    novo_status_lead = st.radio(
-                        "Status do Lead:",
-                        ["Em busca", "Já comprou"],
-                        index=0 if status_lead == "Em busca" else 1,
-                        key=f"status_direct_{lead_id}",
-                        horizontal=False
-                    )
+                    novo_status_lead = st.radio("Status do Lead:", ["Em busca", "Já comprou"], index=0 if status_lead == "Em busca" else 1, key=f"status_direct_{lead_id}")
                     if novo_status_lead != status_lead:
                         supabase.table("leads").update({"status": novo_status_lead}).eq("id", lead_id).execute()
                         st.success("Status atualizado!")
                         st.rerun()
 
-                # --- EDITAR LEAD ---
-                with st.expander(f"✏️ Editar dados do lead {lead.get('nome')}"):
+                with st.expander(f"✏️ Editar dados de {lead.get('nome')}"):
                     with st.form(key=f"form_edit_lead_{lead_id}"):
                         el_c1, el_c2 = st.columns(2)
                         with el_c1:
-                            e_nome = st.text_input("Nome Completo", value=lead.get('nome', ''), key=f"e_nome_{lead_id}")
+                            e_nome = st.text_input("Nome", value=lead.get('nome', ''), key=f"e_nome_{lead_id}")
                             e_whatsapp = st.text_input("WhatsApp", value=lead.get('whatsapp', ''), key=f"e_wa_{lead_id}")
                         with el_c2:
                             bairros_atuais = lead.get('bairros_interesse', [])
                             bairros_validos = [b for b in bairros_atuais if b in BAIRROS_PASSOS]
-                            e_bairros = st.multiselect("Bairros de Interesse", BAIRROS_PASSOS, default=bairros_validos, key=f"e_bairros_{lead_id}")
-                            e_orcamento = st.number_input("Orçamento Máximo (R$)", min_value=0.0, value=float(lead.get('orcamento_maximo', 0.0)), step=10000.0, key=f"e_orc_{lead_id}")
+                            e_bairros = st.multiselect("Bairros", BAIRROS_PASSOS, default=bairros_validos, key=f"e_bairros_{lead_id}")
+                            e_orcamento = st.number_input("Orçamento (R$)", min_value=0.0, value=float(lead.get('orcamento_maximo', 0.0)), step=10000.0, key=f"e_orc_{lead_id}")
                         
-                        btn_salvar_lead = st.form_submit_button("💾 Salvar Alterações no Lead", use_container_width=True)
+                        btn_salvar_lead = st.form_submit_button("💾 Salvar Alterações", use_container_width=True, type="primary")
                         if btn_salvar_lead:
                             dados_lead_atualizados = {
-                                "nome": e_nome,
-                                "whatsapp": e_whatsapp,
-                                "bairros_interesse": e_bairros,
-                                "orcamento_maximo": e_orcamento
+                                "nome": e_nome, "whatsapp": e_whatsapp,
+                                "bairros_interesse": e_bairros, "orcamento_maximo": e_orcamento
                             }
                             supabase.table("leads").update(dados_lead_atualizados).eq("id", lead_id).execute()
-                            st.success("✅ Dados do Lead atualizados com sucesso!")
+                            st.success("✅ Dados do Lead atualizados!")
                             st.rerun()
 
                 st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# 🎯 ABA 6: MATCH INTELIGENTE (EXIBE SOMENTE COM MATCHES)
+# 🎯 ABA 6: MATCH INTELIGENTE
 # ==========================================
 elif menu == "🎯 Encontrar Matches":
     st.title("🎯 Automação de Match Imobiliário")
-    st.write("Exibindo **apenas clientes ativos** que possuem imóveis compatíveis disponíveis.")
+    st.write("Leads ativos com imóveis compatíveis no catálogo da Mendes & Soares.")
     st.divider()
 
-    # Imóveis que estão com status 'Disponível'
     imoveis_disponiveis = [i for i in imoveis_data if i.get('status', 'Disponível') == 'Disponível']
-
-    # Filtrar apenas leads ativos que estão 'Em busca'
     leads_em_busca = [l for l in leads_data if l.get('status', 'Em busca') == 'Em busca']
-
     total_leads_com_match = 0
 
     if not leads_em_busca:
@@ -574,16 +576,13 @@ elif menu == "🎯 Encontrar Matches":
             orcamento = lead.get('orcamento_maximo', 0)
             bairros = lead.get('bairros_interesse', [])
             
-            # Cruzamento Bairro e Valor
             matches = []
             for imovel in imoveis_disponiveis:
                 preco_ok = imovel.get('valor_venda', 0) <= orcamento
                 bairro_ok = (not bairros) or (imovel.get('bairro') in bairros)
-                
                 if preco_ok and bairro_ok:
                     matches.append(imovel)
             
-            # MOSTRAR SOMENTE SE HOUVER PELO MENOS 1 MATCH
             if matches:
                 total_leads_com_match += 1
                 whatsapp_num = lead.get('whatsapp', '').replace("+", "").replace(" ", "").replace("-", "")
@@ -598,13 +597,7 @@ elif menu == "🎯 Encontrar Matches":
                         st.caption(f"💰 Orçamento Máx: **R$ {orcamento:,.2f}** | 📍 Bairros Desejados: **{bairros_texto}**")
                     
                     with c_status:
-                        novo_status_lead = st.radio(
-                            "Status:",
-                            ["Em busca", "Já comprou"],
-                            index=0,
-                            key=f"status_lead_match_{lead.get('id')}",
-                            horizontal=True
-                        )
+                        novo_status_lead = st.radio("Status:", ["Em busca", "Já comprou"], index=0, key=f"status_lead_match_{lead.get('id')}", horizontal=True)
                         if novo_status_lead == "Já comprou":
                             supabase.table("leads").update({"status": "Já comprou"}).eq("id", lead.get("id")).execute()
                             st.success("Status alterado para 'Já comprou'!")
@@ -619,28 +612,17 @@ elif menu == "🎯 Encontrar Matches":
                             st.write(f"🏠 **{m.get('tipo')} [{m.get('codigo_imovel')}]** — **R$ {m.get('valor_venda'):,.2f}** no bairro **{m.get('bairro')}**")
                         with c2:
                             caracteristicas = []
-                            if m.get('quartos'):
-                                caracteristicas.append(f"🛏️ {m.get('quartos')} quarto(s)")
-                            if m.get('suites'):
-                                caracteristicas.append(f"🚿 {m.get('suites')} suíte(s)")
-                            if m.get('banheiros'):
-                                caracteristicas.append(f"🚽 {m.get('banheiros')} banheiro(s)")
-                            if m.get('vagas_garagem'):
-                                caracteristicas.append(f"🚗 {m.get('vagas_garagem')} vaga(s) de garagem")
-                            if m.get('garagem_coberta'):
-                                caracteristicas.append("🚘 Garagem coberta")
-                            if m.get('area_gourmet'):
-                                caracteristicas.append("🍖 Área gourmet / churrasqueira")
-                            if m.get('sala'):
-                                caracteristicas.append("🛋️ Sala")
-                            if m.get('copa'):
-                                caracteristicas.append("🍽️ Copa")
-                            if m.get('cozinha'):
-                                caracteristicas.append("🍳 Cozinha")
-                            if m.get('area_construida'):
-                                caracteristicas.append(f"🏗️ Área construída: {m.get('area_construida')}m²")
-                            if m.get('area_terreno'):
-                                caracteristicas.append(f"📐 Terreno: {m.get('area_terreno')}m²")
+                            if m.get('quartos'): caracteristicas.append(f"🛏️ {m.get('quartos')} quarto(s)")
+                            if m.get('suites'): caracteristicas.append(f"🚿 {m.get('suites')} suíte(s)")
+                            if m.get('banheiros'): caracteristicas.append(f"🚽 {m.get('banheiros')} banheiro(s)")
+                            if m.get('vagas_garagem'): caracteristicas.append(f"🚗 {m.get('vagas_garagem')} vaga(s) de garagem")
+                            if m.get('garagem_coberta'): caracteristicas.append("🚘 Garagem coberta")
+                            if m.get('area_gourmet'): caracteristicas.append("🍖 Área gourmet / churrasqueira")
+                            if m.get('sala'): caracteristicas.append("🛋️ Sala")
+                            if m.get('copa'): caracteristicas.append("🍽️ Copa")
+                            if m.get('cozinha'): caracteristicas.append("🍳 Cozinha")
+                            if m.get('area_construida'): caracteristicas.append(f"🏗️ Área construída: {m.get('area_construida')}m²")
+                            if m.get('area_terreno'): caracteristicas.append(f"📐 Terreno: {m.get('area_terreno')}m²")
 
                             texto_caracteristicas = ""
                             if caracteristicas:
@@ -648,16 +630,16 @@ elif menu == "🎯 Encontrar Matches":
 
                             texto_msg = (
                                 f"Olá {lead.get('nome')}! Tudo bem?\n\n"
-                                f"Encontrei uma opção de *{m.get('tipo')}* no bairro *{m.get('bairro')}* "
-                                f"por *R$ {m.get('valor_venda'):,.2f}* que encaixa no seu perfil."
+                                f"Aqui é da *Mendes & Soares Engenharia e Imóveis*. "
+                                f"Encontrei uma excelente opção de *{m.get('tipo')}* no bairro *{m.get('bairro')}* "
+                                f"por *R$ {m.get('valor_venda'):,.2f}* que encaixa no seu perfil!"
                                 f"{texto_caracteristicas}\n\n"
-                                f"Posso te enviar as fotos para você dar uma olhada?"
+                                f"Posso te enviar as fotos do imóvel?"
                             )
                             link_wa = f"https://wa.me/{whatsapp_num}?text={urllib.parse.quote(texto_msg)}"
-                            st.markdown(f"[📲 **Enviar WhatsApp**]({link_wa})")
+                            st.markdown(f"[📲 **Enviar pelo WhatsApp**]({link_wa})")
 
                     st.markdown('</div>', unsafe_allow_html=True)
 
         if total_leads_com_match == 0:
             st.info("Nenhum match ativo encontrado no momento entre seus clientes e imóveis disponíveis.")
-            
