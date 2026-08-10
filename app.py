@@ -133,21 +133,50 @@ if menu == "📊 Dashboard":
         st.metric(label="🔥 Matches Ativos", value=total_matches)
 
 # ==========================================
-# 📋 ABA 2: IMÓVEIS CADASTRADOS & EDIÇÃO
+# 📋 ABA 2: IMÓVEIS CADASTRADOS & EDIÇÃO (COM FILTROS)
 # ==========================================
 elif menu == "📋 Imóveis Cadastrados":
     st.title("📋 Inventário de Imóveis")
-    st.write("Consulte, gerencie, edite e remova imóveis cadastrados em Passos-MG.")
+    st.write("Consulte, filtre, gerencie, edite e remova imóveis cadastrados em Passos-MG.")
     
-    if st.button("🔄 Atualizar Lista"):
-        st.rerun()
+    # --- BARRA DE FILTROS E BUSCA (ITEM 1) ---
+    with st.expander("🔍 **Filtros e Busca de Imóveis**", expanded=True):
+        f_col1, f_col2, f_col3, f_col4 = st.columns([2, 1.5, 1.5, 2])
+        
+        with f_col1:
+            busca_imovel = st.text_input("🔎 Pesquisar por Código ou Bairro", placeholder="Ex: IMO-001 ou Centro", key="busca_imovel")
+        with f_col2:
+            filtro_tipo = st.selectbox("Tipo de Imóvel", ["Todos", "Casa", "Apartamento", "Terreno", "Sobrado", "Cobertura", "Sítio/Chácara"], key="filtro_tipo")
+        with f_col3:
+            filtro_status = st.selectbox("Status", ["Todos", "Disponível", "Vendido"], index=1, key="filtro_status")
+        with f_col4:
+            valores = [float(i.get('valor_venda', 0)) for i in imoveis_data] if imoveis_data else [0.0, 1000000.0]
+            max_val = max(valores) if valores and max(valores) > 0 else 2000000.0
+            filtro_preco_max = st.slider("Valor Máximo (R$)", min_value=0.0, max_value=max_val, value=max_val, step=50000.0, format="R$ %d")
 
     st.divider()
 
-    if not imoveis_data:
-        st.info("Nenhum imóvel cadastrado no momento.")
+    # Aplicação dos Filtros
+    imoveis_filtrados = imoveis_data
+    if busca_imovel:
+        termo = busca_imovel.lower().strip()
+        imoveis_filtrados = [
+            i for i in imoveis_filtrados 
+            if termo in i.get('codigo_imovel', '').lower() or termo in i.get('bairro', '').lower()
+        ]
+    if filtro_tipo != "Todos":
+        imoveis_filtrados = [i for i in imoveis_filtrados if i.get('tipo') == filtro_tipo]
+    if filtro_status != "Todos":
+        imoveis_filtrados = [i for i in imoveis_filtrados if i.get('status', 'Disponível') == filtro_status]
+    
+    imoveis_filtrados = [i for i in imoveis_filtrados if float(i.get('valor_venda', 0)) <= filtro_preco_max]
+
+    st.caption(f"Exibindo **{len(imoveis_filtrados)}** de **{len(imoveis_data)}** imóveis encontrados.")
+
+    if not imoveis_filtrados:
+        st.info("Nenhum imóvel encontrado com os filtros selecionados.")
     else:
-        for imovel in imoveis_data:
+        for imovel in imoveis_filtrados:
             status_atual = imovel.get('status', 'Disponível')
             imovel_id = imovel.get('id')
             
@@ -423,21 +452,47 @@ elif menu == "👤 Novo Lead":
                 st.success(f"✅ Lead **{nome}** cadastrado com sucesso para {len(bairros_interesse)} bairro(s)!")
 
 # ==========================================
-# 👥 ABA 5: GERENCIAR LEADS
+# 👥 ABA 5: GERENCIAR LEADS (COM FILTROS E BUSCA)
 # ==========================================
 elif menu == "👥 Gerenciar Leads":
     st.title("👥 Gerenciamento de Leads")
-    st.write("Consulte e altere preferências, nome, telefone ou orçamento dos clientes.")
+    st.write("Consulte, pesquise, filtre e altere preferências ou dados dos clientes.")
     
-    if st.button("🔄 Atualizar Lista de Leads"):
-        st.rerun()
+    # --- BARRA DE FILTROS E BUSCA PARA LEADS (ITEM 2) ---
+    with st.expander("🔍 **Filtros e Busca de Leads**", expanded=True):
+        fl_col1, fl_col2, fl_col3 = st.columns([2, 1.5, 2.5])
+        
+        with fl_col1:
+            busca_lead = st.text_input("🔎 Pesquisar Nome ou WhatsApp", placeholder="Ex: João ou 35999...", key="busca_lead")
+        with fl_col2:
+            filtro_status_lead = st.selectbox("Status do Lead", ["Todos", "Em busca", "Já comprou"], index=1, key="filtro_status_lead")
+        with fl_col3:
+            filtro_bairro_lead = st.selectbox("Filtrar por Bairro de Interesse", ["Todos"] + BAIRROS_PASSOS, key="filtro_bairro_lead")
 
     st.divider()
 
-    if not leads_data:
-        st.info("Nenhum lead cadastrado até o momento.")
+    # Aplicação dos Filtros de Leads
+    leads_filtrados = leads_data
+    if busca_lead:
+        termo_l = busca_lead.lower().strip()
+        leads_filtrados = [
+            l for l in leads_filtrados 
+            if termo_l in l.get('nome', '').lower() or termo_l in l.get('whatsapp', '').lower()
+        ]
+    if filtro_status_lead != "Todos":
+        leads_filtrados = [l for l in leads_filtrados if l.get('status', 'Em busca') == filtro_status_lead]
+    if filtro_bairro_lead != "Todos":
+        leads_filtrados = [
+            l for l in leads_filtrados 
+            if filtro_bairro_lead in l.get('bairros_interesse', [])
+        ]
+
+    st.caption(f"Exibindo **{len(leads_filtrados)}** de **{len(leads_data)}** clientes cadastrados.")
+
+    if not leads_filtrados:
+        st.info("Nenhum lead encontrado com os filtros selecionados.")
     else:
-        for lead in leads_data:
+        for lead in leads_filtrados:
             lead_id = lead.get('id')
             status_lead = lead.get('status', 'Em busca')
             
