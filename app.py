@@ -19,10 +19,10 @@ BAIRROS_PASSOS = [
     "Flamboyant", "Jacarandá", "Jardim América", "Jardim Cidade",
     "Jardim Colégio de Passos", "Jardim Europa", "Jardim Florença",
     "Jardim dos Lagos", "Mirante do Vale", "Muarama", "Nossa Senhora das Graças",
-    "Nova California", "Nova Passos 1, 2, 3 e 4", "Novo Horizonte", "Nsa de Fátima",
+    "Nova California", "Nova Passos", "Novo Horizonte", "Nsa de Fátima",
     "Panorama", "Parque das Oliveiras", "Penha", "Penha 2", "Planalto",
     "Polivalente", "Primavera", "Recanto do Bosque", "Santa Luzia", "São Benedito",
-    "São Francisco", "Tropical", "Vale Verde 1 e 2", "Vilagio D´Italia", "Vila Rica"
+    "São Francisco", "Tropical", "Vale Verde" "Vale verde 2", "Vilagio D´Italia", "Vila Rica"
 ]
 
 OPCOES_PAGAMENTO = ["À vista", "Financiamento", "Consórcio", "Permuta / Troca", "Indefinido"]
