@@ -133,39 +133,44 @@ if menu == "📊 Dashboard":
         st.metric(label="🔥 Matches Ativos", value=total_matches)
 
 # ==========================================
-# 📋 ABA 2: IMÓVEIS CADASTRADOS & EDIÇÃO (COM FILTROS)
+# 📋 ABA 2: IMÓVEIS CADASTRADOS (FILTROS SEPARADOS POR CÓDIGO E BAIRRO)
 # ==========================================
 elif menu == "📋 Imóveis Cadastrados":
     st.title("📋 Inventário de Imóveis")
     st.write("Consulte, filtre, gerencie, edite e remova imóveis cadastrados em Passos-MG.")
     
-    # --- BARRA DE FILTROS E BUSCA (ITEM 1) ---
+    # --- BARRA DE FILTROS SEPARADOS E BUSCA ---
     with st.expander("🔍 **Filtros e Busca de Imóveis**", expanded=True):
-        f_col1, f_col2, f_col3, f_col4 = st.columns([2, 1.5, 1.5, 2])
+        f_col1, f_col2, f_col3, f_col4, f_col5 = st.columns([1.2, 1.5, 1.2, 1.2, 2])
         
         with f_col1:
-            busca_imovel = st.text_input("🔎 Pesquisar por Código ou Bairro", placeholder="Ex: IMO-001 ou Centro", key="busca_imovel")
+            busca_codigo = st.text_input("🔎 Código", placeholder="Ex: IMO-001", key="busca_codigo")
         with f_col2:
-            filtro_tipo = st.selectbox("Tipo de Imóvel", ["Todos", "Casa", "Apartamento", "Terreno", "Sobrado", "Cobertura", "Sítio/Chácara"], key="filtro_tipo")
+            filtro_bairro_imovel = st.selectbox("📍 Bairro", ["Todos"] + BAIRROS_PASSOS, key="filtro_bairro_imovel")
         with f_col3:
-            filtro_status = st.selectbox("Status", ["Todos", "Disponível", "Vendido"], index=1, key="filtro_status")
+            filtro_tipo = st.selectbox("🏠 Tipo", ["Todos", "Casa", "Apartamento", "Terreno", "Sobrado", "Cobertura", "Sítio/Chácara"], key="filtro_tipo")
         with f_col4:
+            filtro_status = st.selectbox("📌 Status", ["Todos", "Disponível", "Vendido"], index=1, key="filtro_status")
+        with f_col5:
             valores = [float(i.get('valor_venda', 0)) for i in imoveis_data] if imoveis_data else [0.0, 1000000.0]
             max_val = max(valores) if valores and max(valores) > 0 else 2000000.0
-            filtro_preco_max = st.slider("Valor Máximo (R$)", min_value=0.0, max_value=max_val, value=max_val, step=50000.0, format="R$ %d")
+            filtro_preco_max = st.slider("💰 Valor Máximo (R$)", min_value=0.0, max_value=max_val, value=max_val, step=50000.0, format="R$ %d")
 
     st.divider()
 
     # Aplicação dos Filtros
     imoveis_filtrados = imoveis_data
-    if busca_imovel:
-        termo = busca_imovel.lower().strip()
-        imoveis_filtrados = [
-            i for i in imoveis_filtrados 
-            if termo in i.get('codigo_imovel', '').lower() or termo in i.get('bairro', '').lower()
-        ]
+    
+    if busca_codigo:
+        termo_cod = busca_codigo.lower().strip()
+        imoveis_filtrados = [i for i in imoveis_filtrados if termo_cod in i.get('codigo_imovel', '').lower()]
+        
+    if filtro_bairro_imovel != "Todos":
+        imoveis_filtrados = [i for i in imoveis_filtrados if i.get('bairro') == filtro_bairro_imovel]
+
     if filtro_tipo != "Todos":
         imoveis_filtrados = [i for i in imoveis_filtrados if i.get('tipo') == filtro_tipo]
+        
     if filtro_status != "Todos":
         imoveis_filtrados = [i for i in imoveis_filtrados if i.get('status', 'Disponível') == filtro_status]
     
@@ -458,7 +463,7 @@ elif menu == "👥 Gerenciar Leads":
     st.title("👥 Gerenciamento de Leads")
     st.write("Consulte, pesquise, filtre e altere preferências ou dados dos clientes.")
     
-    # --- BARRA DE FILTROS E BUSCA PARA LEADS (ITEM 2) ---
+    # --- BARRA DE FILTROS E BUSCA PARA LEADS ---
     with st.expander("🔍 **Filtros e Busca de Leads**", expanded=True):
         fl_col1, fl_col2, fl_col3 = st.columns([2, 1.5, 2.5])
         
