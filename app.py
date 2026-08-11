@@ -396,18 +396,32 @@ elif menu == "📋 Imóveis Cadastrados":
                         btn_salvar_edicao = st.form_submit_button("💾 Salvar Alterações", use_container_width=True, type="primary")
                         if btn_salvar_edicao:
                             dados_atualizados = {
-                                "tipo": e_tipo, "bairro": e_bairro, "valor_venda": e_valor,
-                                "nome_proprietario": e_nome_prop, "telefone_proprietario": e_tel_prop,
-                                "endereco": e_endereco, "corretor_captacao": e_corretor,
-                                "quartos": e_quartos, "suites": e_suites, "banheiros": e_banheiros,
-                                "vagas_garagem": e_vagas, "garagem_coberta": e_garagem_coberta,
-                                "area_gourmet": e_area_gourmet, "sala": e_sala, "copa": e_copa,
-                                "cozinha": e_cozinha, "area_terreno": e_area_terreno,
-                                "area_construida": e_area_construida, "descricao": e_descricao
+                                "tipo": str(e_tipo),
+                                "bairro": str(e_bairro),
+                                "valor_venda": float(e_valor),
+                                "nome_proprietario": str(e_nome_prop),
+                                "telefone_proprietario": str(e_tel_prop),
+                                "endereco": str(e_endereco),
+                                "corretor_captacao": str(e_corretor),
+                                "quartos": int(e_quartos),
+                                "suites": int(e_suites),
+                                "banheiros": int(e_banheiros),
+                                "vagas_garagem": int(e_vagas),
+                                "garagem_coberta": bool(e_garagem_coberta),
+                                "area_gourmet": bool(e_area_gourmet),
+                                "sala": bool(e_sala),
+                                "copa": bool(e_copa),
+                                "cozinha": bool(e_cozinha),
+                                "area_terreno": float(e_area_terreno) if e_area_terreno else 0.0,
+                                "area_construida": float(e_area_construida) if e_area_construida else 0.0,
+                                "descricao": str(e_descricao)
                             }
-                            supabase.table("imoveis").update(dados_atualizados).eq("id", imovel_id).execute()
-                            st.success("✅ Imóvel atualizado com sucesso!")
-                            st.rerun()
+                            try:
+                                supabase.table("imoveis").update(dados_atualizados).eq("id", imovel_id).execute()
+                                st.success("✅ Imóvel atualizado com sucesso!")
+                                st.rerun()
+                            except Exception as err:
+                                st.error(f"Erro ao atualizar no Supabase: {err}")
 
                 st.markdown('</div>', unsafe_allow_html=True)
 
@@ -601,9 +615,11 @@ elif menu == "👥 Gerenciar Leads":
                         btn_salvar_lead = st.form_submit_button("💾 Salvar Alterações", use_container_width=True, type="primary")
                         if btn_salvar_lead:
                             dados_lead_atualizados = {
-                                "nome": e_nome, "whatsapp": e_whatsapp,
-                                "bairros_interesse": e_bairros, "orcamento_maximo": e_orcamento,
-                                "corretor_responsavel": e_corretor_l
+                                "nome": str(e_nome),
+                                "whatsapp": str(e_whatsapp),
+                                "bairros_interesse": e_bairros,
+                                "orcamento_maximo": float(e_orcamento),
+                                "corretor_responsavel": str(e_corretor_l)
                             }
                             supabase.table("leads").update(dados_lead_atualizados).eq("id", lead_id).execute()
                             st.success("✅ Dados do Lead atualizados!")
@@ -706,4 +722,3 @@ elif menu == "🎯 Encontrar Matches":
 
         if total_leads_com_match == 0:
             st.info("Nenhum match encontrado para os leads ativos no momento.")
-            
