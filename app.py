@@ -291,8 +291,21 @@ elif menu == "📋 Imóveis Cadastrados":
                     with c_badge:
                         st.markdown(f'<span class="price-badge">R$ {imovel.get("valor_venda", 0):,.2f}</span>', unsafe_allow_html=True)
                     
-                    st.write(f"📍 **Bairro:** {imovel.get('bairro')} {f'| **Endereço:** {imovel.get(\'endereco\')}' if imovel.get('endereco') else ''}")
-                    st.write(f"👤 **Proprietário:** {imovel.get('nome_proprietario', 'Não informado')} {f'({imovel.get(\'telefone_proprietario\')})' if imovel.get('telefone_proprietario') else ''} | 🔑 **Captação:** {imovel.get('corretor_captacao', 'Não informado')}")
+                    bairro_txt = imovel.get('bairro', '')
+                    endereco_txt = imovel.get('endereco', '')
+                    info_local = f"📍 **Bairro:** {bairro_txt}"
+                    if endereco_txt:
+                        info_local += f" | **Endereço:** {endereco_txt}"
+                    st.write(info_local)
+
+                    nome_prop = imovel.get('nome_proprietario', 'Não informado')
+                    tel_prop = imovel.get('telefone_proprietario', '')
+                    corr_cap = imovel.get('corretor_captacao', 'Não informado')
+                    info_prop = f"👤 **Proprietário:** {nome_prop}"
+                    if tel_prop:
+                        info_prop += f" ({tel_prop})"
+                    info_prop += f" | 🔑 **Captação:** {corr_cap}"
+                    st.write(info_prop)
 
                     detalhes = f"🛏️ {imovel.get('quartos', 0)} Quarto(s) | 🚿 {imovel.get('suites', 0)} Suíte(s) | 🚽 {imovel.get('banheiros', 0)} Banheiro(s) | 🚗 {imovel.get('vagas_garagem', 0)} Vaga(s)"
                     if imovel.get('area_terreno'):
