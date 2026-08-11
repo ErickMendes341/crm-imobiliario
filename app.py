@@ -16,7 +16,7 @@ COR_TEXTO = "#101620"          # Texto escuro refinado
 # --- LISTA DE CORRETORES E CONTATOS ---
 DADOS_CORRETORES = {
     "Erick Mendes": "(35) 9 9810-2465",
-    "Pedro Siqueira": "(35) 9 9999-9999"  # Substitua pelo número real se necessário
+    "Pedro Siqueira": "(35) 9 9999-9999"
 }
 CORRETORES = list(DADOS_CORRETORES.keys())
 
@@ -67,16 +67,14 @@ def gerar_codigo_imovel_auto():
     proximo_num = len(imoveis) + 1
     return f"MS-{proximo_num:03d}"
 
-# --- ESTILIZAÇÃO CSS PERSONALIZADA MENDES & SOARES ---
+# --- ESTILIZAÇÃO CSS PERSONALIZADA ---
 st.markdown(f"""
     <style>
-    /* Fundo da aplicação */
     .stApp {{
         background-color: {COR_FUNDO_PAGINA};
         color: {COR_TEXTO};
     }}
     
-    /* Estilização da Sidebar Lateral */
     section[data-testid="stSidebar"] {{
         background-color: {COR_AZUL_MARINHO} !important;
     }}
@@ -87,7 +85,6 @@ st.markdown(f"""
         color: #e2e8f0 !important;
     }}
 
-    /* Estilização dos Cards do CRM */
     .stCard {{
         background-color: {COR_CARD};
         border-radius: 12px;
@@ -105,7 +102,6 @@ st.markdown(f"""
         box-shadow: 0 8px 24px rgba(24, 30, 41, 0.12);
     }}
 
-    /* Badge Elegante de Preço */
     .price-badge {{
         background: linear-gradient(135deg, {COR_DOURADO}, {COR_DOURADO_HOVER});
         color: #ffffff;
@@ -118,7 +114,6 @@ st.markdown(f"""
         box-shadow: 0 2px 6px rgba(197, 155, 39, 0.3);
     }}
 
-    /* Tags de Diferenciais */
     .feature-tag {{
         background-color: #f1f5f9;
         color: {COR_AZUL_MARINHO};
@@ -132,7 +127,6 @@ st.markdown(f"""
         border: 1px solid #cbd5e1;
     }}
 
-    /* Botões Primários Estilizados em Dourado */
     div.stButton > button[kind="primary"] {{
         background-color: {COR_DOURADO} !important;
         color: #ffffff !important;
@@ -146,7 +140,6 @@ st.markdown(f"""
         box-shadow: 0 4px 12px rgba(197, 155, 39, 0.4) !important;
     }}
 
-    /* Títulos */
     h1, h2, h3 {{
         color: {COR_AZUL_MARINHO} !important;
         font-weight: 700 !important;
@@ -158,7 +151,7 @@ st.markdown(f"""
 imoveis_data = carregar_imoveis()
 leads_data = carregar_leads()
 
-# --- MENU LATERAL COM A LOGO MENDES & SOARES ---
+# --- MENU LATERAL ---
 with st.sidebar:
     if os.path.exists("logo.png"):
         st.image("logo.png", use_container_width=True)
@@ -204,7 +197,7 @@ if menu == "📊 Dashboard":
             bairros = lead.get('bairros_interesse', [])
             for im in imoveis_disponiveis:
                 bairro_ok = (not bairros) or (im.get('bairro') in bairros)
-                preco_ok = im.get('valor_venda', 0) <= orc
+                preco_ok = float(im.get('valor_venda', 0)) <= float(orc)
                 if preco_ok and bairro_ok:
                     total_matches += 1
         st.metric(label="🔥 Matches Ativos", value=total_matches)
@@ -362,7 +355,6 @@ elif menu == "📋 Imóveis Cadastrados":
                         tipos_list = ["Casa", "Apartamento", "Terreno", "Sobrado", "Cobertura", "Sítio/Chácara"]
                         idx_tipo = tipos_list.index(imovel.get('tipo')) if imovel.get('tipo') in tipos_list else 0
                         idx_bairro = BAIRROS_PASSOS.index(imovel.get('bairro')) if imovel.get('bairro') in BAIRROS_PASSOS else 0
-                        
                         idx_corretor = CORRETORES.index(imovel.get('corretor_captacao')) if imovel.get('corretor_captacao') in CORRETORES else 0
 
                         with e_c1:
@@ -618,11 +610,11 @@ elif menu == "👥 Gerenciar Leads":
                 st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# 🎯 ABA 6: ENCONTRAR MATCHES
+# 🎯 ABA 6: ENCONTRAR MATCHES (FILTRO POR BAIRRO E VALOR)
 # ==========================================
 elif menu == "🎯 Encontrar Matches":
     st.title("🎯 Cruzamento de Dados (Matches Inteligentes)")
-    st.write("Conecte os compradores aos imóveis ideais com base em localização e orçamento.")
+    st.write("Conecte os compradores aos imóveis ideais com base estrita em **bairros de interesse** e **orçamento máximo**.")
     st.divider()
 
     leads_em_busca = [l for l in leads_data if l.get('status', 'Em busca') == 'Em busca']
@@ -639,7 +631,7 @@ elif menu == "🎯 Encontrar Matches":
 
         st.subheader(f"📋 Perfil de Busca: **{lead_selecionado.get('nome')}**")
         bairros_pref = lead_selecionado.get('bairros_interesse', [])
-        orc_max = lead_selecionado.get('orcamento_maximo', 0)
+        orc_max = float(lead_selecionado.get('orcamento_maximo', 0))
         corretor_resp = lead_selecionado.get('corretor_responsavel', 'Erick Mendes')
         tel_corretor = DADOS_CORRETORES.get(corretor_resp, "(35) 9 9810-2465")
 
@@ -653,17 +645,23 @@ elif menu == "🎯 Encontrar Matches":
 
         st.divider()
 
+        # --- LÓGICA DE MATCH EXCLUSIVA POR BAIRRO E VALOR ---
         matches = []
         for im in imoveis_disponiveis:
+            # 1. Validação de Bairro
             bairro_match = (not bairros_pref) or (im.get('bairro') in bairros_pref)
-            preco_match = float(im.get('valor_venda', 0)) <= float(orc_max)
+            # 2. Validação de Valor
+            preco_imovel = float(im.get('valor_venda', 0))
+            preco_match = preco_imovel <= orc_max
+            
+            # Ambas precisam ser verdadeiras para dar Match
             if bairro_match and preco_match:
                 matches.append(im)
 
-        st.markdown(f"### 🔥 **{len(matches)}** Imóveis Encontrados para este Perfil")
+        st.markdown(f"### 🔥 **{len(matches)}** Imóveis Compatíveis (Por Bairro e Valor)")
 
         if not matches:
-            st.warning("Nenhum imóvel disponível atende 100% aos critérios de bairro e orçamento deste cliente.")
+            st.warning("Nenhum imóvel disponível atende simultaneamente aos critérios de bairro e valor deste cliente.")
         else:
             for imovel in matches:
                 with st.container():
@@ -679,11 +677,11 @@ elif menu == "🎯 Encontrar Matches":
 
                     with m_col2:
                         st.subheader(f"{imovel.get('tipo')} no Bairro {imovel.get('bairro')} — Cód: **{imovel.get('codigo_imovel')}**")
-                        st.markdown(f'<span class="price-badge">R$ {imovel.get("valor_venda", 0):,.2f}</span>', unsafe_allow_html=True)
+                        st.markdown(f'<span class="price-badge">R$ {float(imovel.get("valor_venda", 0)):,.2f}</span>', unsafe_allow_html=True)
                         st.write("")
                         st.write(f"🛏️ {imovel.get('quartos', 0)} qts | 🚿 {imovel.get('suites', 0)} suítes | 🚗 {imovel.get('vagas_garagem', 0)} vagas")
 
-                        # --- CONSTRUÇÃO DA LISTA DE CARACTERÍSTICAS PARA A MENSAGEM ---
+                        # Monta características da mensagem
                         caracteristicas_lista = []
                         if imovel.get('quartos'):
                             caracteristicas_lista.append(f"{imovel.get('quartos')} quarto(s)" + (f" ({imovel.get('suites')} suíte(s))" if imovel.get('suites') else ""))
@@ -700,7 +698,6 @@ elif menu == "🎯 Encontrar Matches":
 
                         txt_caracteristicas = "\n".join([f"- {item}" for item in caracteristicas_lista]) if caracteristicas_lista else "- Excelente estrutura e localização"
 
-                        # --- MODELO DA MENSAGEM DO WHATSAPP ---
                         msg = (
                             f"Olá, {lead_selecionado.get('nome')}! Tudo bem?\n\n"
                             f"Aqui é o *{corretor_resp}* da *Mendes & Soares Engenharia e Imóveis* ({tel_corretor}).\n\n"
