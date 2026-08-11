@@ -358,7 +358,6 @@ elif menu == "📋 Imóveis Cadastrados":
                         tipos_list = ["Casa", "Apartamento", "Terreno", "Sobrado", "Cobertura", "Sítio/Chácara"]
                         idx_tipo = tipos_list.index(imovel.get('tipo')) if imovel.get('tipo') in tipos_list else 0
                         idx_bairro = BAIRROS_PASSOS.index(imovel.get('bairro')) if imovel.get('bairro') in BAIRROS_PASSOS else 0
-                        
                         idx_corretor = CORRETORES.index(imovel.get('corretor_captacao')) if imovel.get('corretor_captacao') in CORRETORES else 0
 
                         with e_c1:
@@ -395,7 +394,7 @@ elif menu == "📋 Imóveis Cadastrados":
                         
                         btn_salvar_edicao = st.form_submit_button("💾 Salvar Alterações", use_container_width=True, type="primary")
                         if btn_salvar_edicao:
-                            dados_atualizados = {
+                            payload = {
                                 "tipo": str(e_tipo),
                                 "bairro": str(e_bairro),
                                 "valor_venda": float(e_valor),
@@ -416,6 +415,10 @@ elif menu == "📋 Imóveis Cadastrados":
                                 "area_construida": float(e_area_construida) if e_area_construida else 0.0,
                                 "descricao": str(e_descricao)
                             }
+                            
+                            colunas_existentes = list(imovel.keys())
+                            dados_atualizados = {k: v for k, v in payload.items() if k in colunas_existentes}
+                            
                             try:
                                 supabase.table("imoveis").update(dados_atualizados).eq("id", imovel_id).execute()
                                 st.success("✅ Imóvel atualizado com sucesso!")
@@ -492,7 +495,7 @@ elif menu == "📝 Novo Imóvel":
                     url_publica = supabase.storage.from_("fotos-imoveis").get_public_url(caminho_storage)
                     urls_fotos.append(url_publica)
             
-            dados_imovel = {
+            payload = {
                 "codigo_imovel": codigo_gerado, "tipo": tipo, "bairro": bairro,
                 "valor_venda": valor, "endereco": endereco,
                 "nome_proprietario": nome_proprietario, "telefone_proprietario": telefone_proprietario,
@@ -504,8 +507,20 @@ elif menu == "📝 Novo Imóvel":
                 "area_terreno": area_terreno, "area_construida": area_construida,
                 "descricao": descricao, "fotos_urls": urls_fotos, "status": "Disponível"
             }
-            supabase.table("imoveis").insert(dados_imovel).execute()
-            st.success(f"✅ Imóvel **{codigo_gerado}** cadastrado com sucesso!")
+            
+            imoveis_existentes = carregar_imoveis()
+            if imoveis_existentes:
+                colunas_existentes = list(imoveis_existentes[0].keys())
+                dados_imovel = {k: v for k, v in payload.items() if k in colunas_existentes}
+            else:
+                dados_imovel = payload
+
+            try:
+                supabase.table("imoveis").insert(dados_imovel).execute()
+                st.success(f"✅ Imóvel **{codigo_gerado}** cadastrado com sucesso!")
+                st.rerun()
+            except Exception as err:
+                st.error(f"Erro ao salvar imóvel: {err}")
 
 # ==========================================
 # 👤 ABA 4: NOVO LEAD
@@ -700,7 +715,6 @@ elif menu == "🎯 Encontrar Matches":
                             st.write(f"📍 Bairro: **{m.get('bairro')}** {(' | ' + detalhes_resumidos) if detalhes_resumidos else ''}")
                         
                         with c2:
-                            # Montagem da mensagem completa para WhatsApp
                             msg_wa = f"Olá, {lead.get('nome')}! Tudo bem?\n\n"
                             msg_wa += f"Aqui é o *{corretor_nome}* da *Mendes & Soares Engenharia e Imóveis*.\n\n"
                             msg_wa += f"Encontrei uma excelente oportunidade de *{m.get('tipo')}* no bairro *{m.get('bairro')}* que combina com o seu perfil! [Cód: {m.get('codigo_imovel')}]\n\n"
