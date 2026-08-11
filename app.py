@@ -13,6 +13,9 @@ COR_FUNDO_PAGINA = "#f4f6f8"   # Cinza suave premium para leitura agradável
 COR_CARD = "#ffffff"          # Fundo branco para os cards
 COR_TEXTO = "#101620"          # Texto escuro refinado
 
+# --- LISTA DE CORRETORES ---
+CORRETORES = ["Erick Mendes", "Pedro Siqueira"]
+
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
     page_title="Mendes & Soares | Engenharia e Imóveis",
@@ -288,8 +291,9 @@ elif menu == "📋 Imóveis Cadastrados":
                     with c_badge:
                         st.markdown(f'<span class="price-badge">R$ {imovel.get("valor_venda", 0):,.2f}</span>', unsafe_allow_html=True)
                     
-                    st.write(f"📍 **Bairro:** {imovel.get('bairro')}")
-                    
+                    st.write(f"📍 **Bairro:** {imovel.get('bairro')} {f'| **Endereço:** {imovel.get(\'endereco\')}' if imovel.get('endereco') else ''}")
+                    st.write(f"👤 **Proprietário:** {imovel.get('nome_proprietario', 'Não informado')} {f'({imovel.get(\'telefone_proprietario\')})' if imovel.get('telefone_proprietario') else ''} | 🔑 **Captação:** {imovel.get('corretor_captacao', 'Não informado')}")
+
                     detalhes = f"🛏️ {imovel.get('quartos', 0)} Quarto(s) | 🚿 {imovel.get('suites', 0)} Suíte(s) | 🚽 {imovel.get('banheiros', 0)} Banheiro(s) | 🚗 {imovel.get('vagas_garagem', 0)} Vaga(s)"
                     if imovel.get('area_terreno'):
                         detalhes += f" | 📐 Lote: {imovel.get('area_terreno')} m²"
@@ -310,7 +314,7 @@ elif menu == "📋 Imóveis Cadastrados":
                     
                     st.write(f"📝 {imovel.get('descricao', 'Sem descrição.')}")
                     
-                    c_status, c_del = st.columns([2, 1])
+                    c_status, c_actions = st.columns([2, 1])
                     with c_status:
                         novo_status = st.radio(
                             "Status do Imóvel:",
@@ -342,12 +346,18 @@ elif menu == "📋 Imóveis Cadastrados":
                         idx_tipo = tipos_list.index(imovel.get('tipo')) if imovel.get('tipo') in tipos_list else 0
                         idx_bairro = BAIRROS_PASSOS.index(imovel.get('bairro')) if imovel.get('bairro') in BAIRROS_PASSOS else 0
                         
+                        idx_corretor = CORRETORES.index(imovel.get('corretor_captacao')) if imovel.get('corretor_captacao') in CORRETORES else 0
+
                         with e_c1:
                             e_tipo = st.selectbox("Tipo de Imóvel", tipos_list, index=idx_tipo, key=f"e_tipo_{imovel_id}")
+                            e_nome_prop = st.text_input("Nome do Proprietário", value=imovel.get('nome_proprietario', ''), key=f"e_np_{imovel_id}")
                         with e_c2:
                             e_bairro = st.selectbox("Bairro (Passos-MG)", BAIRROS_PASSOS, index=idx_bairro, key=f"e_bairro_{imovel_id}")
+                            e_tel_prop = st.text_input("Telefone do Proprietário", value=imovel.get('telefone_proprietario', ''), key=f"e_tp_{imovel_id}")
                             e_valor = st.number_input("Valor de Venda (R$)", min_value=0.0, value=float(imovel.get('valor_venda', 0.0)), step=10000.0, key=f"e_valor_{imovel_id}")
                         with e_c3:
+                            e_corretor = st.selectbox("Corretor Captação", CORRETORES, index=idx_corretor, key=f"e_corr_{imovel_id}")
+                            e_endereco = st.text_input("Endereço do Imóvel", value=imovel.get('endereco', ''), key=f"e_end_{imovel_id}")
                             e_area_terreno = st.number_input("Tamanho do Lote (m²)", min_value=0.0, value=float(imovel.get('area_terreno', 0.0) or 0.0), step=10.0, key=f"e_at_{imovel_id}")
                             e_area_construida = st.number_input("Área Construída (m²)", min_value=0.0, value=float(imovel.get('area_construida', 0.0) or 0.0), step=10.0, key=f"e_ac_{imovel_id}")
 
@@ -374,6 +384,8 @@ elif menu == "📋 Imóveis Cadastrados":
                         if btn_salvar_edicao:
                             dados_atualizados = {
                                 "tipo": e_tipo, "bairro": e_bairro, "valor_venda": e_valor,
+                                "nome_proprietario": e_nome_prop, "telefone_proprietario": e_tel_prop,
+                                "endereco": e_endereco, "corretor_captacao": e_corretor,
                                 "quartos": e_quartos, "suites": e_suites, "banheiros": e_banheiros,
                                 "vagas_garagem": e_vagas, "garagem_coberta": e_garagem_coberta,
                                 "area_gourmet": e_area_gourmet, "sala": e_sala, "copa": e_copa,
@@ -402,12 +414,22 @@ elif menu == "📝 Novo Imóvel":
         with c1:
             st.text_input("Código do Imóvel", value=codigo_gerado, disabled=True)
             tipo = st.selectbox("Tipo de Imóvel", ["Casa", "Apartamento", "Terreno", "Sobrado", "Cobertura", "Sítio/Chácara"])
+            corretor_captacao = st.selectbox("Corretor que Captou *", CORRETORES)
         with c2:
             bairro = st.selectbox("Bairro (Passos-MG) *", BAIRROS_PASSOS)
             valor = st.number_input("Valor de Venda (R$) *", min_value=0.0, value=350000.0, step=10000.0)
+            endereco = st.text_input("Endereço / Rua e Número")
         with c3:
             area_terreno = st.number_input("Tamanho do Lote (m²)", min_value=0.0, value=250.0, step=10.0)
             area_construida = st.number_input("Área Construída (m²)", min_value=0.0, value=120.0, step=10.0)
+
+        st.divider()
+        st.subheader("👤 Dados do Proprietário")
+        cp1, cp2 = st.columns(2)
+        with cp1:
+            nome_proprietario = st.text_input("Nome do Proprietário *")
+        with cp2:
+            telefone_proprietario = st.text_input("Telefone do Proprietário", placeholder="(35) 99999-9999")
 
         st.divider()
         st.subheader("🛏️ Cômodos e Vagas")
@@ -445,7 +467,10 @@ elif menu == "📝 Novo Imóvel":
             
             dados_imovel = {
                 "codigo_imovel": codigo_gerado, "tipo": tipo, "bairro": bairro,
-                "valor_venda": valor, "quartos": quartos, "suites": suites,
+                "valor_venda": valor, "endereco": endereco,
+                "nome_proprietario": nome_proprietario, "telefone_proprietario": telefone_proprietario,
+                "corretor_captacao": corretor_captacao,
+                "quartos": quartos, "suites": suites,
                 "banheiros": banheiros, "vagas_garagem": vagas,
                 "garagem_coberta": garagem_coberta, "area_gourmet": area_gourmet,
                 "sala": sala, "copa": copa, "cozinha": cozinha,
@@ -468,6 +493,7 @@ elif menu == "👤 Novo Lead":
         with col1:
             nome = st.text_input("Nome Completo do Cliente *")
             whatsapp = st.text_input("WhatsApp com DDD *", "+5535998102465")
+            corretor_lead = st.selectbox("Corretor Responsável *", CORRETORES)
         with col2:
             bairros_interesse = st.multiselect("Bairros de Interesse (Passos-MG) *", BAIRROS_PASSOS, default=["Centro"])
             orcamento = st.number_input("Orçamento Máximo (R$) *", min_value=0.0, value=500000.0, step=10000.0)
@@ -479,7 +505,7 @@ elif menu == "👤 Novo Lead":
             else:
                 dados_lead = {
                     "nome": nome, "whatsapp": whatsapp, "bairros_interesse": bairros_interesse,
-                    "orcamento_maximo": orcamento, "status": "Em busca"
+                    "orcamento_maximo": orcamento, "corretor_responsavel": corretor_lead, "status": "Em busca"
                 }
                 supabase.table("leads").insert(dados_lead).execute()
                 st.success(f"✅ Lead **{nome}** cadastrado com sucesso!")
@@ -524,7 +550,7 @@ elif menu == "👥 Gerenciar Leads":
                     st.subheader(f"👤 {lead.get('nome')} — {lead.get('whatsapp')}")
                     bairros_str = ", ".join(lead.get('bairros_interesse', [])) if lead.get('bairros_interesse') else "Nenhum"
                     st.write(f"📍 **Bairros de Interesse:** {bairros_str}")
-                    st.write(f"💰 **Orçamento Máximo:** R$ {lead.get('orcamento_maximo', 0):,.2f}")
+                    st.write(f"💰 **Orçamento Máximo:** R$ {lead.get('orcamento_maximo', 0):,.2f} | 🔑 **Corretor:** {lead.get('corretor_responsavel', 'Não informado')}")
                 
                 with col2:
                     novo_status_lead = st.radio("Status do Lead:", ["Em busca", "Já comprou"], index=0 if status_lead == "Em busca" else 1, key=f"status_direct_{lead_id}")
@@ -533,12 +559,26 @@ elif menu == "👥 Gerenciar Leads":
                         st.success("Status atualizado!")
                         st.rerun()
 
+                # --- EXCLUIR LEAD ---
+                with st.expander(f"🗑️ Excluir Lead {lead.get('nome')}"):
+                    st.warning("⚠️ Esta ação é permanente e removerá o lead do sistema.")
+                    confirma_excluir_lead = st.checkbox("Confirmar exclusão deste lead", key=f"chk_del_lead_{lead_id}")
+                    if st.button("🚨 Excluir Lead Definitivamente", key=f"btn_del_lead_{lead_id}", type="primary"):
+                        if confirma_excluir_lead:
+                            supabase.table("leads").delete().eq("id", lead_id).execute()
+                            st.success(f"Lead **{lead.get('nome')}** removido com sucesso!")
+                            st.rerun()
+
+                # --- EDITAR LEAD ---
                 with st.expander(f"✏️ Editar dados de {lead.get('nome')}"):
                     with st.form(key=f"form_edit_lead_{lead_id}"):
                         el_c1, el_c2 = st.columns(2)
+                        idx_corr_lead = CORRETORES.index(lead.get('corretor_responsavel')) if lead.get('corretor_responsavel') in CORRETORES else 0
+                        
                         with el_c1:
                             e_nome = st.text_input("Nome", value=lead.get('nome', ''), key=f"e_nome_{lead_id}")
                             e_whatsapp = st.text_input("WhatsApp", value=lead.get('whatsapp', ''), key=f"e_wa_{lead_id}")
+                            e_corretor_l = st.selectbox("Corretor Responsável", CORRETORES, index=idx_corr_lead, key=f"e_corr_l_{lead_id}")
                         with el_c2:
                             bairros_atuais = lead.get('bairros_interesse', [])
                             bairros_validos = [b for b in bairros_atuais if b in BAIRROS_PASSOS]
@@ -549,7 +589,8 @@ elif menu == "👥 Gerenciar Leads":
                         if btn_salvar_lead:
                             dados_lead_atualizados = {
                                 "nome": e_nome, "whatsapp": e_whatsapp,
-                                "bairros_interesse": e_bairros, "orcamento_maximo": e_orcamento
+                                "bairros_interesse": e_bairros, "orcamento_maximo": e_orcamento,
+                                "corretor_responsavel": e_corretor_l
                             }
                             supabase.table("leads").update(dados_lead_atualizados).eq("id", lead_id).execute()
                             st.success("✅ Dados do Lead atualizados!")
@@ -575,6 +616,7 @@ elif menu == "🎯 Encontrar Matches":
         for lead in leads_em_busca:
             orcamento = lead.get('orcamento_maximo', 0)
             bairros = lead.get('bairros_interesse', [])
+            corretor_nome = lead.get('corretor_responsavel', 'Mendes & Soares')
             
             matches = []
             for imovel in imoveis_disponiveis:
@@ -594,7 +636,7 @@ elif menu == "🎯 Encontrar Matches":
                     c_lead, c_status = st.columns([3, 1])
                     with c_lead:
                         st.subheader(f"👤 {lead.get('nome')} — {lead.get('whatsapp')}")
-                        st.caption(f"💰 Orçamento Máx: **R$ {orcamento:,.2f}** | 📍 Bairros Desejados: **{bairros_texto}**")
+                        st.caption(f"💰 Orçamento Máx: **R$ {orcamento:,.2f}** | 📍 Bairros Desejados: **{bairros_texto}** | 🔑 Corretor: **{corretor_nome}**")
                     
                     with c_status:
                         novo_status_lead = st.radio("Status:", ["Em busca", "Já comprou"], index=0, key=f"status_lead_match_{lead.get('id')}", horizontal=True)
@@ -609,28 +651,40 @@ elif menu == "🎯 Encontrar Matches":
                     for m in matches:
                         c1, c2 = st.columns([3, 1])
                         
-                        caracteristicas = []
-                        if m.get('quartos'): caracteristicas.append(f"🛏️ {m.get('quartos')} quarto(s)")
-                        if m.get('suites'): caracteristicas.append(f"🚿 {m.get('suites')} suíte(s)")
-                        if m.get('banheiros'): caracteristicas.append(f"🚽 {m.get('banheiros')} banheiro(s)")
-                        if m.get('vagas_garagem'): caracteristicas.append(f"🚗 {m.get('vagas_garagem')} vaga(s)")
-                        
-                        detalhes_str = " | ".join(caracteristicas)
+                        caracteristicas_lista = []
+                        if m.get('quartos'): caracteristicas_lista.append(f"• {m.get('quartos')} quarto(s)")
+                        if m.get('suites'): caracteristicas_lista.append(f"• {m.get('suites')} suíte(s)")
+                        if m.get('banheiros'): caracteristicas_lista.append(f"• {m.get('banheiros')} banheiro(s)")
+                        if m.get('vagas_garagem'): caracteristicas_lista.append(f"• {m.get('vagas_garagem')} vaga(s) de garagem")
+                        if m.get('garagem_coberta'): caracteristicas_lista.append("• Garagem coberta")
+                        if m.get('sala'): caracteristicas_lista.append("• Sala de estar/jantar")
+                        if m.get('copa'): caracteristicas_lista.append("• Copa")
+                        if m.get('cozinha'): caracteristicas_lista.append("• Cozinha")
+                        if m.get('area_gourmet'): caracteristicas_lista.append("• Área gourmet / churrasqueira")
+                        if m.get('area_terreno'): caracteristicas_lista.append(f"• Lote de {m.get('area_terreno')} m²")
+                        if m.get('area_construida'): caracteristicas_lista.append(f"• Área construída de {m.get('area_construida')} m²")
+
+                        detalhes_resumidos = " | ".join(caracteristicas_lista[:4])
                         
                         with c1:
                             st.markdown(f"**🏠 {m.get('tipo')} [{m.get('codigo_imovel')}]** — <span style='color:{COR_DOURADO}; font-weight:bold;'>R$ {m.get('valor_venda'):,.2f}</span>", unsafe_allow_html=True)
-                            st.write(f"📍 Bairro: **{m.get('bairro')}** {(' | ' + detalhes_str) if detalhes_str else ''}")
+                            st.write(f"📍 Bairro: **{m.get('bairro')}** {(' | ' + detalhes_resumidos) if detalhes_resumidos else ''}")
                         
                         with c2:
-                            # Montagem da mensagem customizada para WhatsApp
+                            # Montagem da mensagem completa para WhatsApp
                             msg_wa = f"Olá, {lead.get('nome')}! Tudo bem?\n\n"
-                            msg_wa += f"Encontramos uma oportunidade na *Mendes & Soares* no seu perfil:\n\n"
-                            msg_wa += f"🏠 *{m.get('tipo')} ({m.get('codigo_imovel')})*\n"
-                            msg_wa += f"📍 Bairro: {m.get('bairro')}\n"
-                            msg_wa += f"💰 Valor: R$ {m.get('valor_venda'):,.2f}\n"
-                            if detalhes_str:
-                                msg_wa += f"✨ Características: {detalhes_str}\n"
-                            msg_wa += f"\nPodemos agendar uma visita?"
+                            msg_wa += f"Aqui é o *{corretor_nome}* da *Mendes & Soares Engenharia e Imóveis*.\n\n"
+                            msg_wa += f"Encontrei uma excelente oportunidade de *{m.get('tipo')}* no bairro *{m.get('bairro')}* que combina com o seu perfil! [Cód: {m.get('codigo_imovel')}]\n\n"
+                            msg_wa += f"💰 *Valor:* R$ {m.get('valor_venda'):,.2f}\n\n"
+                            msg_wa += "✨ *Características do imóvel:*\n"
+                            
+                            for item in caracteristicas_lista:
+                                msg_wa += f"{item}\n"
+                            
+                            if m.get('descricao'):
+                                msg_wa += f"\n📝 *Descrição:* {m.get('descricao')}\n"
+                            
+                            msg_wa += f"\n*Posso te enviar as fotos do imóvel?*"
                             
                             url_wa = f"https://wa.me/{whatsapp_num}?text={urllib.parse.quote(msg_wa)}"
                             st.link_button("📲 Enviar WhatsApp", url_wa, type="primary")
