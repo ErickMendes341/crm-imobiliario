@@ -522,6 +522,9 @@ elif menu == "👤 Novo Lead":
 # ==========================================
 # 👥 ABA 5: GERENCIAR LEADS
 # ==========================================
+# ==========================================
+# 👥 ABA 5: GERENCIAR LEADS
+# ==========================================
 elif menu == "👥 Gerenciar Leads":
     st.title("👥 Gerenciamento de Leads")
     st.write("Gerencie e atualize o perfil de busca dos clientes.")
@@ -541,7 +544,7 @@ elif menu == "👥 Gerenciar Leads":
     if filtro_status_lead != "Todos":
         leads_filtrados = [l for l in leads_filtrados if l.get('status', 'Em busca') == filtro_status_lead]
     if filtro_bairro_lead != "Todos":
-        leads_filtrados = [l for l in leads_filtrados if filtro_bairro_lead in l.get('bairros_interesse', [])]
+        leads_filtrados = [l for l in leads_filtrados if filtro_bairro_lead in (l.get('bairros_interesse') or [])]
 
     st.caption(f"Exibindo **{len(leads_filtrados)}** de **{len(leads_data)}** clientes.")
 
@@ -557,16 +560,24 @@ elif menu == "👥 Gerenciar Leads":
                 col1, col2 = st.columns([3, 1])
                 with col1:
                     st.subheader(f"👤 {lead.get('nome')} — {lead.get('whatsapp')}")
-                    bairros_str = ", ".join(lead.get('bairros_interesse', [])) if lead.get('bairros_interesse') else "Nenhum"
+                    bairros_raw = lead.get('bairros_interesse')
+                    if isinstance(bairros_raw, list):
+                        bairros_str = ", ".join(bairros_raw)
+                    else:
+                        bairros_str = str(bairros_raw) if bairros_raw else "Nenhum"
+                        
                     st.write(f"📍 **Bairros de Interesse:** {bairros_str}")
-                    st.write(f"💰 **Orçamento Máximo:** R$ {lead.get('orcamento_maximo', 0):,.2f} | 🔑 **Corretor:** {lead.get('corretor_responsavel', 'Não informado')}")
+                    st.write(f"💰 **Orçamento Máximo:** R$ {float(lead.get('orcamento_maximo', 0)):,.2f} | 🔑 **Corretor:** {lead.get('corretor_responsavel', 'Não informado')}")
                 
                 with col2:
                     novo_status_lead = st.radio("Status do Lead:", ["Em busca", "Já comprou"], index=0 if status_lead == "Em busca" else 1, key=f"status_direct_{lead_id}")
                     if novo_status_lead != status_lead:
-                        supabase.table("leads").update({"status": novo_status_lead}).eq("id", lead_id).execute()
-                        st.success("Status atualizado!")
-                        st.rerun()
+                        try:
+                            supabase.table("leads").update({"status": novo_status_lead}).eq("id", lead_id).execute()
+                            st.success("Status atualizado!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Erro ao atualizar status: {e}")
 
                 # --- EXCLUIR LEAD ---
                 with st.expander(f"🗑️ Excluir Lead {lead.get('nome')}"):
@@ -574,9 +585,12 @@ elif menu == "👥 Gerenciar Leads":
                     confirma_excluir_lead = st.checkbox("Confirmar exclusão deste lead", key=f"chk_del_lead_{lead_id}")
                     if st.button("🚨 Excluir Lead Definitivamente", key=f"btn_del_lead_{lead_id}", type="primary"):
                         if confirma_excluir_lead:
-                            supabase.table("leads").delete().eq("id", lead_id).execute()
-                            st.success(f"Lead **{lead.get('nome')}** removido com sucesso!")
-                            st.rerun()
+                            try:
+                                supabase.table("leads").delete().eq("id", lead_id).execute()
+                                st.success(f"Lead **{lead.get('nome')}** removido com sucesso!")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Erro ao excluir: {e}")
 
                 # --- EDITAR LEAD ---
                 with st.expander(f"✏️ Editar dados de {lead.get('nome')}"):
@@ -588,8 +602,14 @@ elif menu == "👥 Gerenciar Leads":
                             e_nome = st.text_input("Nome", value=lead.get('nome', ''), key=f"e_nome_{lead_id}")
                             e_whatsapp = st.text_input("WhatsApp", value=lead.get('whatsapp', ''), key=f"e_wa_{lead_id}")
                             e_corretor_l = st.selectbox("Corretor Responsável", CORRETORES, index=idx_corr_lead, key=f"e_corr_l_{lead_id}")
+                        
                         with el_c2:
                             bairros_atuais = lead.get('bairros_interesse', [])
+                            if isinstance(bairros_atuais, str):
+                                bairros_atuais = [b.strip() for b in bairros_atuais.split(",")]
+                            elif not isinstance(bairros_atuais, list):
+                                bairros_atuais = []
+                                
                             bairros_validos = [b for b in bairros_atuais if b in BAIRROS_PASSOS]
                             e_bairros = st.multiselect("Bairros", BAIRROS_PASSOS, default=bairros_validos, key=f"e_bairros_{lead_id}")
                             e_orcamento = st.number_input("Orçamento (R$)", min_value=0.0, value=float(lead.get('orcamento_maximo', 0.0)), step=10000.0, key=f"e_orc_{lead_id}")
@@ -601,11 +621,15 @@ elif menu == "👥 Gerenciar Leads":
                                 "whatsapp": e_whatsapp,
                                 "corretor_responsavel": e_corretor_l,
                                 "bairros_interesse": e_bairros,
-                                "orcamento_maximo": e_orcamento
+                                "orcamento_maximo": float(e_orcamento)
                             }
-                            supabase.table("leads").update(dados_lead_atualizados).eq("id", lead_id).execute()
-                            st.success("✅ Lead atualizado com sucesso!")
-                            st.rerun()
+                            try:
+                                response = supabase.table("leads").update(dados_lead_atualizados).eq("id", lead_id).execute()
+                                st.success("✅ Lead atualizado com sucesso!")
+                                st.rerun()
+                            except Exception as err:
+                                st.error(f"Erro no banco de dados ao salvar: {err}")
+                                st.info("Dica: Se o erro persistir, verifique no painel do Supabase se o RLS (Row Level Security) está desativado na tabela 'leads' ou se a coluna 'bairros_interesse' é do tipo array/jsonb.")
 
                 st.markdown('</div>', unsafe_allow_html=True)
 
