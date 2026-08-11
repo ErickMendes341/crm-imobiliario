@@ -4,14 +4,14 @@ import urllib.parse
 import os
 
 # ==========================================
-# 🎨 PALETA DE CORES MENDES & SOARES (EXTRAÍDA DA LOGO)
+# 🎨 PALETA DE CORES MENDES & SOARES
 # ==========================================
 COR_AZUL_MARINHO = "#181e29"  # Fundo da logo / Sidebar / Títulos
 COR_DOURADO = "#c59b27"       # Dourado vibrante dos botões e destaques
 COR_DOURADO_HOVER = "#a37f1e" # Dourado mais escuro para efeito ao passar o mouse
 COR_FUNDO_PAGINA = "#f4f6f8"   # Cinza suave premium para leitura agradável
 COR_CARD = "#ffffff"          # Fundo branco para os cards
-COR_TEXTO = "#101620"         # Texto escuro refinado
+COR_TEXTO = "#101620"          # Texto escuro refinado
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
@@ -608,39 +608,34 @@ elif menu == "🎯 Encontrar Matches":
                     
                     for m in matches:
                         c1, c2 = st.columns([3, 1])
+                        
+                        caracteristicas = []
+                        if m.get('quartos'): caracteristicas.append(f"🛏️ {m.get('quartos')} quarto(s)")
+                        if m.get('suites'): caracteristicas.append(f"🚿 {m.get('suites')} suíte(s)")
+                        if m.get('banheiros'): caracteristicas.append(f"🚽 {m.get('banheiros')} banheiro(s)")
+                        if m.get('vagas_garagem'): caracteristicas.append(f"🚗 {m.get('vagas_garagem')} vaga(s)")
+                        
+                        detalhes_str = " | ".join(caracteristicas)
+                        
                         with c1:
-                            st.write(f"🏠 **{m.get('tipo')} [{m.get('codigo_imovel')}]** — **R$ {m.get('valor_venda'):,.2f}** no bairro **{m.get('bairro')}**")
+                            st.markdown(f"**🏠 {m.get('tipo')} [{m.get('codigo_imovel')}]** — <span style='color:{COR_DOURADO}; font-weight:bold;'>R$ {m.get('valor_venda'):,.2f}</span>", unsafe_allow_html=True)
+                            st.write(f"📍 Bairro: **{m.get('bairro')}** {(' | ' + detalhes_str) if detalhes_str else ''}")
+                        
                         with c2:
-                            caracteristicas = []
-                            if m.get('quartos'): caracteristicas.append(f"🛏️ {m.get('quartos')} quarto(s)")
-                            if m.get('suites'): caracteristicas.append(f"🚿 {m.get('suites')} suíte(s)")
-                            if m.get('banheiros'): caracteristicas.append(f"🚽 {m.get('banheiros')} banheiro(s)")
-                            if m.get('vagas_garagem'): caracteristicas.append(f"🚗 {m.get('vagas_garagem')} vaga(s) de garagem")
-                            if m.get('garagem_coberta'): caracteristicas.append("🚘 Garagem coberta")
-                            if m.get('area_gourmet'): caracteristicas.append("🍖 Área gourmet / churrasqueira")
-                            if m.get('sala'): caracteristicas.append("🛋️ Sala")
-                            if m.get('copa'): caracteristicas.append("🍽️ Copa")
-                            if m.get('cozinha'): caracteristicas.append("🍳 Cozinha")
-                            if m.get('area_construida'): caracteristicas.append(f"🏗️ Área construída: {m.get('area_construida')}m²")
-                            if m.get('area_terreno'): caracteristicas.append(f"📐 Terreno: {m.get('area_terreno')}m²")
-
-                            texto_caracteristicas = ""
-                            if caracteristicas:
-                                texto_caracteristicas = "\n\n*Destaques do Imóvel:*\n• " + "\n• ".join(caracteristicas)
-
-                            texto_msg = (
-                                f"Olá {lead.get('nome')}! Tudo bem?\n\n"
-                                f"Aqui é da *Mendes & Soares Engenharia e Imóveis*. "
-                                f"Encontrei uma excelente opção de *{m.get('tipo')}* no bairro *{m.get('bairro')}* "
-                                f"por *R$ {m.get('valor_venda'):,.2f}* que encaixa no seu perfil!"
-                                f"{texto_caracteristicas}\n\n"
-                                f"Posso te enviar as fotos do imóvel?"
-                            )
-                            link_wa = f"https://wa.me/{whatsapp_num}?text={urllib.parse.quote(texto_msg)}"
-                            st.markdown(f"[📲 **Enviar pelo WhatsApp**]({link_wa})")
+                            # Montagem da mensagem customizada para WhatsApp
+                            msg_wa = f"Olá, {lead.get('nome')}! Tudo bem?\n\n"
+                            msg_wa += f"Encontramos uma oportunidade na *Mendes & Soares* no seu perfil:\n\n"
+                            msg_wa += f"🏠 *{m.get('tipo')} ({m.get('codigo_imovel')})*\n"
+                            msg_wa += f"📍 Bairro: {m.get('bairro')}\n"
+                            msg_wa += f"💰 Valor: R$ {m.get('valor_venda'):,.2f}\n"
+                            if detalhes_str:
+                                msg_wa += f"✨ Características: {detalhes_str}\n"
+                            msg_wa += f"\nPodemos agendar uma visita?"
+                            
+                            url_wa = f"https://wa.me/{whatsapp_num}?text={urllib.parse.quote(msg_wa)}"
+                            st.link_button("📲 Enviar WhatsApp", url_wa, type="primary")
 
                     st.markdown('</div>', unsafe_allow_html=True)
 
         if total_leads_com_match == 0:
-            st.info("Nenhum match ativo encontrado no momento entre seus clientes e imóveis disponíveis.")
-                                
+            st.info("Nenhum match encontrado para os leads ativos no momento.")
