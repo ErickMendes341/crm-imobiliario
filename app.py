@@ -557,19 +557,12 @@ elif menu == "👤 Novo Lead":
     st.write("Registre um novo cliente e suas preferências de compra.")
     st.divider()
 
-    # Busca lista predefinida de bairros (ou utiliza a variável BAIRROS definida no seu app)
-    lista_bairros_opcoes = BAIRROS if 'BAIRROS' in locals() or 'BAIRROS' in globals() else [
-        "Centro", "Vilagio D'Itália", "Bela Vista", "Jardim América", "São Francisco", "Outro"
-    ]
-
     with st.form("form_novo_lead", clear_on_submit=True):
         col_l1, col_l2 = st.columns(2)
         with col_l1:
             l_nome = st.text_input("Nome Completo *")
             l_zap = st.text_input("WhatsApp (com DDD) *")
-            
-            # Campo de seleção múltipla com lista predefinida
-            l_bairros_sel = st.multiselect("Bairros de Interesse *", options=lista_bairros_opcoes)
+            l_bairros_sel = st.multiselect("Bairros de Interesse *", options=BAIRROS)
             
         with col_l2:
             l_orc = st.number_input("Orçamento Máximo (R$)", min_value=0.0, step=10000.0)
@@ -582,19 +575,16 @@ elif menu == "👤 Novo Lead":
             if not l_nome or not l_zap:
                 st.error("Por favor, preencha o Nome e o WhatsApp.")
             else:
-                # Junta os bairros selecionados em texto separado por vírgula
                 bairros_str = ", ".join(l_bairros_sel) if l_bairros_sel else "Não informado"
 
+                # Payload contendo estritamente as colunas existentes na tabela 'leads'
                 payload_novo_lead = {
                     "nome": str(l_nome),
                     "whatsapp": str(l_zap),
                     "bairro_interesse": str(bairros_str),
-                    "bairro": str(bairros_str),
                     "orcamento_max": float(l_orc),
-                    "orcamento": float(l_orc),
                     "corretor": str(l_corretor),
                     "observacoes": str(l_obs),
-                    "desejos": str(l_obs),
                     "status": "Em busca"
                 }
                 try:
@@ -620,115 +610,18 @@ elif menu == "👥 Gerenciar Leads":
             l_id = lead.get('id')
             nome_lead = lead.get('nome') or 'Sem nome'
             zap_lead = lead.get('whatsapp') or 'S/N'
+            bairro_int = lead.get('bairro_interesse') or 'Não informado'
             
-            # Procura o bairro nas duas colunas possíveis
-            bairro_int = lead.get('bairro_interesse') or lead.get('bairro') or ''
-            
-            # Procura o orçamento nas duas colunas possíveis
-            orc_raw = lead.get('orcamento_max') if lead.get('orcamento_max') is not None else lead.get('orcamento')
             try:
-                orc_max = float(orc_raw) if orc_raw is not None else 0.0
+                orc_max = float(lead.get('orcamento_max') or 0.0)
             except Exception:
                 orc_max = 0.0
 
             corretor_lead = lead.get('corretor') or 'Não informado'
-            obs_lead = lead.get('observacoes') or lead.get('desejos') or ''
+            obs_lead = lead.get('observacoes') or ''
             status_lead = lead.get('status') or 'Em busca'
 
-            # Formata valor máximo
             orc_fmt = f"R$ {orc_max:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if orc_max > 0 else "Não informado"
-
-            with st.container():
-                st.markdown('<div class="stCard">', unsafe_allow_html=True)
-                
-                col_info, col_st = st.columns([3, 1])
-                with col_info:
-                    st.subheader(f"👤 {nome_lead} — {zap_lead}")
-                    st.write(f"📍 **Bairros de Interesse:** {bairro_int if bairro_int else 'Não informado'}")
-                    st.write(f"💰 **Orçamento Máximo:** {orc_fmt} | 🔑 **Corretor:** {corretor_lead}")
-                    if obs_lead:
-                        st.write(f"📝 **Desejos / Obs:** {obs_lead}")
-
-                with col_st:
-                    novo_st = st.radio("Status do Lead:", ["Em busca", "Já comprou"], index=0 if status_lead == "Em busca" else 1, key=f"rad_st_{l_id}")
-                    if novo_st != status_lead:
-                        supabase.table("leads").update({"status": novo_st}).eq("id", l_id).execute()
-                        st.success("Status atualizado!")
-                        st.rerun()
-
-                col_btn_edit, col_btn_del = st.columns([1, 1])
-
-                with col_btn_edit:
-                    with st.expander("✏️ Editar Lead"):
-                        with st.form(key=f"form_edit_lead_{l_id}"):
-                            e_nome = st.text_input("Nome", value=str(nome_lead))
-                            e_zap = st.text_input("WhatsApp", value=str(zap_lead))
-                            e_bairro = st.text_input("Bairros de Interesse", value=str(bairro_int))
-                            e_orc = st.number_input("Orçamento Máximo (R$)", value=float(orc_max), step=10000.0)
-                            
-                            idx_corr = CORRETORES.index(corretor_lead) if corretor_lead in CORRETORES else 0
-                            e_corretor = st.selectbox("Corretor Responsável", CORRETORES, index=idx_corr)
-                            e_obs = st.text_area("Observações / Desejos", value=str(obs_lead))
-
-                            if st.form_submit_button("💾 Salvar Alterações", use_container_width=True, type="primary"):
-                                payload_edit = {
-                                    "nome": str(e_nome),
-                                    "whatsapp": str(e_zap),
-                                    "bairro_interesse": str(e_bairro),
-                                    "bairro": str(e_bairro),
-                                    "orcamento_max": float(e_orc),
-                                    "orcamento": float(e_orc),
-                                    "corretor": str(e_corretor),
-                                    "observacoes": str(e_obs),
-                                    "desejos": str(e_obs)
-                                }
-                                try:
-                                    supabase.table("leads").update(payload_edit).eq("id", l_id).execute()
-                                    st.success("Lead atualizado com sucesso!")
-                                    st.rerun()
-                                except Exception as err:
-                                    st.error(f"Erro ao atualizar lead: {err}")
-
-                with col_btn_del:
-                    with st.expander("🗑️ Excluir Lead"):
-                        st.write(f"Tem certeza que deseja excluir **{nome_lead}**?")
-                        if st.button("Confirmar Exclusão", key=f"btn_confirm_del_lead_{l_id}", type="primary"):
-                            try:
-                                supabase.table("leads").delete().eq("id", l_id).execute()
-                                st.success("Lead excluído com sucesso!")
-                                st.rerun()
-                            except Exception as err:
-                                st.error(f"Erro ao excluir lead: {err}")
-
-                st.markdown('</div>', unsafe_allow_html=True)
-
-# ==========================================
-# 👥 ABA: GERENCIAR LEADS
-# ==========================================
-elif menu == "👥 Gerenciar Leads":
-    st.title("👥 Gerenciar Leads")
-    st.write("Visualização, edição e controle de clientes cadastrados.")
-    st.divider()
-
-    if not leads_data:
-        st.info("Nenhum lead cadastrado no momento.")
-    else:
-        for lead in leads_data:
-            l_id = lead.get('id')
-            nome_lead = lead.get('nome', 'Sem nome')
-            zap_lead = lead.get('whatsapp', 'S/N')
-            bairro_int = lead.get('bairro_interesse') or lead.get('bairro') or 'Não informado'
-            orc_max = lead.get('orcamento_max') or lead.get('orcamento') or 0
-            corretor_lead = lead.get('corretor', 'Não informado')
-            obs_lead = lead.get('observacoes') or lead.get('desejos') or ''
-            status_lead = lead.get('status', 'Em busca')
-
-            # Formata valor máximo
-            try:
-                orc_num = float(orc_max)
-                orc_fmt = f"R$ {orc_num:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-            except Exception:
-                orc_fmt = str(orc_max)
 
             with st.container():
                 st.markdown('<div class="stCard">', unsafe_allow_html=True)
@@ -753,29 +646,29 @@ elif menu == "👥 Gerenciar Leads":
                 with col_btn_edit:
                     with st.expander("✏️ Editar Lead"):
                         with st.form(key=f"form_edit_lead_{l_id}"):
-                            e_nome = st.text_input("Nome", value=nome_lead)
-                            e_zap = st.text_input("WhatsApp", value=zap_lead)
-                            e_bairro = st.text_input("Bairros de Interesse", value=bairro_int if bairro_int != 'Não informado' else '')
+                            e_nome = st.text_input("Nome", value=str(nome_lead))
+                            e_zap = st.text_input("WhatsApp", value=str(zap_lead))
                             
-                            try:
-                                v_orc_init = float(orc_max)
-                            except Exception:
-                                v_orc_init = 0.0
-
-                            e_orc = st.number_input("Orçamento Máximo (R$)", value=v_orc_init, step=10000.0)
+                            # Pré-seleção dos bairros salvos anteriormente
+                            bairros_atuais = [b.strip() for b in bairro_int.split(",")] if bairro_int != 'Não informado' else []
+                            bairros_validos = [b for b in bairros_atuais if b in BAIRROS]
+                            
+                            e_bairros = st.multiselect("Bairros de Interesse", options=BAIRROS, default=bairros_validos)
+                            e_orc = st.number_input("Orçamento Máximo (R$)", value=float(orc_max), step=10000.0)
                             
                             idx_corr = CORRETORES.index(corretor_lead) if corretor_lead in CORRETORES else 0
                             e_corretor = st.selectbox("Corretor Responsável", CORRETORES, index=idx_corr)
-                            e_obs = st.text_area("Observações / Desejos", value=obs_lead)
+                            e_obs = st.text_area("Observações / Desejos", value=str(obs_lead))
 
                             if st.form_submit_button("💾 Salvar Alterações", use_container_width=True, type="primary"):
+                                bairros_edit_str = ", ".join(e_bairros) if e_bairros else "Não informado"
                                 payload_edit = {
-                                    "nome": e_nome,
-                                    "whatsapp": e_zap,
-                                    "bairro_interesse": e_bairro,
-                                    "orcamento_max": e_orc,
-                                    "corretor": e_corretor,
-                                    "observacoes": e_obs
+                                    "nome": str(e_nome),
+                                    "whatsapp": str(e_zap),
+                                    "bairro_interesse": str(bairros_edit_str),
+                                    "orcamento_max": float(e_orc),
+                                    "corretor": str(e_corretor),
+                                    "observacoes": str(e_obs)
                                 }
                                 try:
                                     supabase.table("leads").update(payload_edit).eq("id", l_id).execute()
@@ -796,6 +689,8 @@ elif menu == "👥 Gerenciar Leads":
                                 st.error(f"Erro ao excluir lead: {err}")
 
                 st.markdown('</div>', unsafe_allow_html=True)
+
+
 # ==========================================
 # 🎯 ABA: ENCONTRAR MATCHES
 # ==========================================
