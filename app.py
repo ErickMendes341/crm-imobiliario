@@ -580,74 +580,105 @@ elif menu == "👤 Novo Lead":
                     st.error(f"Erro ao salvar lead: {err}")
 
 # ==========================================
-# 👥 ABA 5: GERENCIAR LEADS
+# 👥 ABA: GERENCIAR LEADS
 # ==========================================
 elif menu == "👥 Gerenciar Leads":
-    st.title("👥 Gerenciamento de Leads")
-    st.write("Gerencie e atualize o perfil de busca dos clientes.")
-    
-    with st.expander("🔍 **Filtros e Busca de Leads**", expanded=True):
-        fl_col1, fl_col2, fl_col3 = st.columns([2, 1.5, 2.5])
-        with fl_col1: busca_lead = st.text_input("🔎 Pesquisar Nome ou WhatsApp", key="busca_lead")
-        with fl_col2: filtro_status_lead = st.selectbox("Status", ["Todos", "Em busca", "Já comprou"], index=1, key="filtro_status_lead")
-        with fl_col3: filtro_bairro_lead = st.selectbox("Filtrar por Bairro", ["Todos"] + BAIRROS_PASSOS, key="filtro_bairro_lead")
-
+    st.title("👥 Gerenciar Leads")
+    st.write("Visualização, edição e controle de clientes cadastrados.")
     st.divider()
 
-    leads_filtrados = leads_data
-    if busca_lead:
-        termo_l = busca_lead.lower().strip()
-        leads_filtrados = [l for l in leads_filtrados if termo_l in l.get('nome', '').lower() or termo_l in l.get('whatsapp', '').lower()]
-    if filtro_status_lead != "Todos":
-        leads_filtrados = [l for l in leads_filtrados if l.get('status', 'Em busca') == filtro_status_lead]
-    if filtro_bairro_lead != "Todos":
-        leads_filtrados = [l for l in leads_filtrados if filtro_bairro_lead in l.get('bairros_interesse', [])]
-
-    st.caption(f"Exibindo **{len(leads_filtrados)}** de **{len(leads_data)}** clientes.")
-
-    if not leads_filtrados:
-        st.info("Nenhum lead encontrado.")
+    if not leads_data:
+        st.info("Nenhum lead cadastrado no momento.")
     else:
-        for lead in leads_filtrados:
-            lead_id = lead.get('id')
+        for lead in leads_data:
+            l_id = lead.get('id')
+            nome_lead = lead.get('nome', 'Sem nome')
+            zap_lead = lead.get('whatsapp', 'S/N')
+            bairro_int = lead.get('bairro_interesse') or lead.get('bairro') or 'Não informado'
+            orc_max = lead.get('orcamento_max') or lead.get('orcamento') or 0
+            corretor_lead = lead.get('corretor', 'Não informado')
+            obs_lead = lead.get('observacoes') or lead.get('desejos') or ''
             status_lead = lead.get('status', 'Em busca')
-            
+
+            # Formata valor máximo
+            try:
+                orc_num = float(orc_max)
+                orc_fmt = f"R$ {orc_num:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            except Exception:
+                orc_fmt = str(orc_max)
+
             with st.container():
                 st.markdown('<div class="stCard">', unsafe_allow_html=True)
-                col1, col2 = st.columns([3, 1])
-                with col1:
-                    st.subheader(f"👤 {lead.get('nome')} — {lead.get('whatsapp')}")
-                    bairros_str = ", ".join(lead.get('bairros_interesse', [])) if lead.get('bairros_interesse') else "Nenhum"
-                    st.write(f"📍 **Bairros de Interesse:** {bairros_str}")
-                    st.write(f"💰 **Orçamento Máximo:** R$ {lead.get('orcamento_maximo', 0):,.2f} | 🔑 **Corretor:** {lead.get('corretor_responsavel', 'Não informado')}")
-                    if lead.get('observacoes'):
-                        st.write(f"📝 **Desejos / Obs:** {lead.get('observacoes')}")
                 
-                with col2:
-                    novo_status_lead = st.radio("Status do Lead:", ["Em busca", "Já comprou"], index=0 if status_lead == "Em busca" else 1, key=f"status_direct_{lead_id}")
-                    if novo_status_lead != status_lead:
-                        supabase.table("leads").update({"status": novo_status_lead}).eq("id", lead_id).execute()
+                col_info, col_st = st.columns([3, 1])
+                with col_info:
+                    st.subheader(f"👤 {nome_lead} — {zap_lead}")
+                    st.write(f"📍 **Bairros de Interesse:** {bairro_int}")
+                    st.write(f"💰 **Orçamento Máximo:** {orc_fmt} | 🔑 **Corretor:** {corretor_lead}")
+                    if obs_lead:
+                        st.write(f"📝 **Desejos / Obs:** {obs_lead}")
+
+                with col_st:
+                    novo_st = st.radio("Status do Lead:", ["Em busca", "Já comprou"], index=0 if status_lead == "Em busca" else 1, key=f"rad_st_{l_id}")
+                    if novo_st != status_lead:
+                        supabase.table("leads").update({"status": novo_st}).eq("id", l_id).execute()
                         st.success("Status atualizado!")
                         st.rerun()
 
-                # --- EXCLUIR LEAD ---
-                with st.expander(f"🗑️ Excluir Lead: {lead.get('nome')}"):
-                    st.warning("⚠️ Esta ação é permanente e removerá o lead da base de dados.")
-                    confirma_excluir_lead = st.checkbox("Confirmar exclusão deste lead", key=f"chk_del_lead_{lead_id}")
-                    if st.button("🚨 Excluir Definitivamente", key=f"btn_del_lead_{lead_id}", type="primary"):
-                        if confirma_excluir_lead:
-                            supabase.table("leads").delete().eq("id", lead_id).execute()
-                            st.success(f"Lead **{lead.get('nome')}** removido com sucesso!")
-                            st.rerun()
+                col_btn_edit, col_btn_del = st.columns([1, 1])
+
+                with col_btn_edit:
+                    with st.expander("✏️ Editar Lead"):
+                        with st.form(key=f"form_edit_lead_{l_id}"):
+                            e_nome = st.text_input("Nome", value=nome_lead)
+                            e_zap = st.text_input("WhatsApp", value=zap_lead)
+                            e_bairro = st.text_input("Bairros de Interesse", value=bairro_int if bairro_int != 'Não informado' else '')
+                            
+                            try:
+                                v_orc_init = float(orc_max)
+                            except Exception:
+                                v_orc_init = 0.0
+
+                            e_orc = st.number_input("Orçamento Máximo (R$)", value=v_orc_init, step=10000.0)
+                            
+                            idx_corr = CORRETORES.index(corretor_lead) if corretor_lead in CORRETORES else 0
+                            e_corretor = st.selectbox("Corretor Responsável", CORRETORES, index=idx_corr)
+                            e_obs = st.text_area("Observações / Desejos", value=obs_lead)
+
+                            if st.form_submit_button("💾 Salvar Alterações", use_container_width=True, type="primary"):
+                                payload_edit = {
+                                    "nome": e_nome,
+                                    "whatsapp": e_zap,
+                                    "bairro_interesse": e_bairro,
+                                    "orcamento_max": e_orc,
+                                    "corretor": e_corretor,
+                                    "observacoes": e_obs
+                                }
+                                try:
+                                    supabase.table("leads").update(payload_edit).eq("id", l_id).execute()
+                                    st.success("Lead atualizado com sucesso!")
+                                    st.rerun()
+                                except Exception as err:
+                                    st.error(f"Erro ao atualizar lead: {err}")
+
+                with col_btn_del:
+                    with st.expander("🗑️ Excluir Lead"):
+                        st.write(f"Tem certeza que deseja excluir **{nome_lead}**?")
+                        if st.button("Confirmar Exclusão", key=f"btn_confirm_del_lead_{l_id}", type="primary"):
+                            try:
+                                supabase.table("leads").delete().eq("id", l_id).execute()
+                                st.success("Lead excluído com sucesso!")
+                                st.rerun()
+                            except Exception as err:
+                                st.error(f"Erro ao excluir lead: {err}")
 
                 st.markdown('</div>', unsafe_allow_html=True)
-
 # ==========================================
-# 🎯 ABA 6: ENCONTRAR MATCHES
+# 🎯 ABA: ENCONTRAR MATCHES
 # ==========================================
 elif menu == "🎯 Encontrar Matches":
     st.title("🎯 Matches Imóvel x Lead")
-    st.write("Cruzamento inteligente de preferências entre leads cadastrados e imóveis disponíveis.")
+    st.write("Cruzamento inteligente filtrando por Bairro de Interesse e Orçamento Máximo do cliente.")
     st.divider()
 
     if not leads_data or not imoveis_data:
@@ -656,48 +687,70 @@ elif menu == "🎯 Encontrar Matches":
         for lead in leads_data:
             nome_lead = lead.get('nome', 'Cliente')
             zap_lead = lead.get('whatsapp', '')
-            tipo_pref = lead.get('tipo_imovel_interesse') or lead.get('tipo_imovel')
-            bairro_pref = lead.get('bairro_interesse') or lead.get('bairro')
-            orcad_max = lead.get('orcamento_max') or lead.get('orcamento')
+            bairro_pref = lead.get('bairro_interesse') or lead.get('bairro') or ''
+            
+            try:
+                orcad_max = float(lead.get('orcamento_max') or lead.get('orcamento') or 0)
+            except Exception:
+                orcad_max = 0.0
 
-            # Filtra imóveis compatíveis
+            # Lógica do Match: Bairro + Valor Máximo
             matches = []
             for imovel in imoveis_data:
                 if imovel.get('status', 'Disponível') == 'Disponível':
-                    match_score = True
-                    if tipo_pref and tipo_pref.lower() not in imovel.get('tipo', '').lower():
-                        match_score = False
-                    if match_score:
+                    bairro_imovel = imovel.get('bairro', '')
+                    
+                    try:
+                        valor_imovel = float(imovel.get('valor_venda') or imovel.get('valor') or 0)
+                    except Exception:
+                        valor_imovel = 0.0
+
+                    # Valida filtro por Bairro (busca parcial / case insensitive)
+                    match_bairro = True
+                    if bairro_pref:
+                        match_bairro = any(
+                            b.strip().lower() in bairro_imovel.lower() 
+                            for b in bairro_pref.split(",")
+                        ) or bairro_imovel.lower() in bairro_pref.lower()
+
+                    # Valida filtro por Valor Máximo (imóvel deve ser menor ou igual ao orçamento do lead)
+                    match_valor = True
+                    if orcad_max > 0 and valor_imovel > 0:
+                        match_valor = valor_imovel <= orcad_max
+
+                    if match_bairro and match_valor:
                         matches.append(imovel)
 
             with st.container():
                 st.markdown('<div class="stCard">', unsafe_allow_html=True)
+                
+                # Exibição dos dados do Lead
+                orc_fmt_lead = f"R$ {orcad_max:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if orcad_max > 0 else "Não informado"
                 st.subheader(f"👤 Lead: {nome_lead}")
-                st.write(f"📱 **WhatsApp:** {zap_lead} | 🎯 **Interesse:** {tipo_pref or 'Geral'} em {bairro_pref or 'Qualquer bairro'}")
+                st.write(f"📱 **WhatsApp:** {zap_lead} | 📍 **Bairro de Interesse:** {bairro_pref or 'Qualquer Bairro'} | 💰 **Orçamento Máximo:** {orc_fmt_lead}")
                 
                 if not matches:
-                    st.info("Nenhum imóvel compatível encontrado no momento.")
+                    st.info("Nenhum imóvel compatível com este bairro e faixa de valor foi encontrado.")
                 else:
-                    st.markdown(f"**{len(matches)} imóvel(is) encontrado(s) para este lead:**")
+                    st.markdown(f"**{len(matches)} imóvel(is) compatível(is):**")
                     for m in matches:
                         cod_imovel = m.get('codigo_imovel', 'S/C')
                         tipo_imovel = m.get('tipo', 'Imóvel')
                         bairro_imovel = m.get('bairro', 'Excelente localização')
                         quartos = m.get('quartos') or m.get('dormitorios') or 'N/I'
                         vagas = m.get('vagas') or 'N/I'
-                        valor = m.get('valor_venda') or m.get('valor') or 'Sob consulta'
                         
-                        # Formatação amigável de valor caso seja numérico
-                        if isinstance(valor, (int, float)):
-                            valor_fmt = f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                        else:
-                            valor_fmt = str(valor)
+                        try:
+                            v_num = float(m.get('valor_venda') or m.get('valor') or 0)
+                            valor_fmt = f"R$ {v_num:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                        except Exception:
+                            valor_fmt = "Sob consulta"
 
-                        # Montagem do texto personalizado para o WhatsApp
+                        # Mensagem do WhatsApp
                         msg_whatsapp = (
                             f"Olá, {nome_lead}! Tudo bem?\n\n"
-                            f"Encontrei uma excelente opção de {tipo_imovel} que se encaixa no seu perfil "
-                            f"no bairro {bairro_imovel} (Ref: {cod_imovel}).\n\n"
+                            f"Encontrei uma excelente opção de {tipo_imovel} no bairro {bairro_imovel} "
+                            f"(Ref: {cod_imovel}) que se encaixa perfeitamente no que você procura!\n\n"
                             f"📌 *Destaques do imóvel:*\n"
                             f"• {quartos} quarto(s)\n"
                             f"• {vagas} vaga(s) de garagem\n"
@@ -706,12 +759,10 @@ elif menu == "🎯 Encontrar Matches":
                             f"Se gostar, conseguimos agendar uma visita esta semana!"
                         )
 
-                        # Limpa caracteres não numéricos do WhatsApp
                         zap_limpo = ''.join(filter(str.isdigit, str(zap_lead)))
                         if not zap_limpo.startswith("55") and len(zap_limpo) >= 10:
                             zap_limpo = f"55{zap_limpo}"
 
-                        # Encode da mensagem para URL
                         from urllib.parse import quote
                         link_wa = f"https://wa.me/{zap_limpo}?text={quote(msg_whatsapp)}"
 
