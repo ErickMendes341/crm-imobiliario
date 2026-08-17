@@ -2,6 +2,7 @@ import streamlit as st
 from supabase import create_client
 import urllib.parse
 import os
+from datetime import date, datetime
 
 # ==========================================
 # 🎨 PALETA DE CORES MENDES & SOARES
@@ -57,6 +58,13 @@ def carregar_imoveis():
 def carregar_leads():
     res = supabase.table("leads").select("*").execute()
     return res.data if res.data else []
+
+def carregar_visitas():
+    try:
+        res = supabase.table("visitas").select("*").execute()
+        return res.data if res.data else []
+    except Exception:
+        return []
 
 def gerar_codigo_imovel_auto():
     imoveis = carregar_imoveis()
@@ -153,6 +161,7 @@ st.markdown(f"""
 # --- CARREGAR DADOS ---
 imoveis_data = carregar_imoveis()
 leads_data = carregar_leads()
+visitas_data = carregar_visitas()
 
 # --- MENU LATERAL COM A LOGO MENDES & SOARES ---
 with st.sidebar:
@@ -166,7 +175,15 @@ with st.sidebar:
 
     menu = st.radio(
         "Navegação do Sistema:",
-        ["📊 Dashboard", "📋 Imóveis Cadastrados", "📝 Novo Imóvel", "👤 Novo Lead", "👥 Gerenciar Leads", "🎯 Encontrar Matches"],
+        [
+            "📊 Dashboard", 
+            "📋 Imóveis Cadastrados", 
+            "📝 Novo Imóvel", 
+            "👤 Novo Lead", 
+            "👥 Gerenciar Leads", 
+            "🎯 Encontrar Matches",
+            "📅 Visitas Agendadas"
+        ],
         index=0
     )
 
@@ -185,25 +202,17 @@ if menu == "📊 Dashboard":
     
     imoveis_disponiveis = [i for i in imoveis_data if i.get('status', 'Disponível') == 'Disponível']
     leads_ativos = [l for l in leads_data if l.get('status', 'Em busca') == 'Em busca']
+    visitas_pendentes = [v for v in visitas_data if v.get('status', 'Agendada') == 'Agendada']
     
     with col1:
         st.metric(label="🏠 Imóveis Disponíveis", value=len(imoveis_disponiveis))
     with col2:
-        st.metric(label="👥 Leads Ativos (Em Busca)", value=len(leads_ativos))
+        st.metric(label="👥 Leads Ativos", value=len(leads_ativos))
     with col3:
+        st.metric(label="📅 Visitas Agendadas", value=len(visitas_pendentes))
+    with col4:
         imoveis_vendidos = len(imoveis_data) - len(imoveis_disponiveis)
         st.metric(label="✅ Imóveis Vendidos", value=imoveis_vendidos)
-    with col4:
-        total_matches = 0
-        for lead in leads_ativos:
-            orc = lead.get('orcamento_maximo', 0)
-            bairros = lead.get('bairros_interesse', [])
-            for im in imoveis_disponiveis:
-                bairro_ok = (not bairros) or (im.get('bairro') in bairros)
-                preco_ok = im.get('valor_venda', 0) <= orc
-                if preco_ok and bairro_ok:
-                    total_matches += 1
-        st.metric(label="🔥 Matches Ativos", value=total_matches)
 
 # ==========================================
 # 📋 ABA 2: IMÓVEIS CADASTRADOS
@@ -558,7 +567,6 @@ elif menu == "👤 Novo Lead":
                     "status": "Em busca"
                 }
                 
-                # Trata envio seguro verificando colunas existentes
                 if leads_data:
                     colunas_lead_existentes = list(leads_data[0].keys())
                     dados_lead = {k: v for k, v in payload_lead.items() if k in colunas_lead_existentes}
@@ -762,3 +770,112 @@ elif menu == "🎯 Encontrar Matches":
 
         if total_leads_com_match == 0:
             st.info("Nenhum match encontrado para os leads ativos no momento.")
+
+# ==========================================
+# 📅 ABA 7: VISITAS AGENDADAS
+# ==========================================
+elif menu == "📅 Visitas Agendadas":
+    st.title("📅 Agendamento e Gestão de Visitas")
+    st.write("Organize a agenda de visitas aos imóveis com clientes.")
+    st.divider()
+
+    # --- FORMULÁRIO DE NOVO AGENDAMENTO ---
+    with st.expander("➕ **Agendar Nova Visita**", expanded=True):
+        if not leads_data or not imoveis_data:
+            st.warning("É necessário ter pelo menos 1 Lead e 1 Imóvel cadastrado para agendar uma visita.")
+        else:
+            # Dicionários auxiliares para seleção amigável
+            leads_dict = {f"{l.get('nome')} ({l.get('whatsapp')})": l for l in leads_data}
+            imoveis_dict = {f"[{i.get('codigo_imovel')}] {i.get('tipo')} no {i.get('bairro')}": i for i in imoveis_data}
+
+            with st.form("form_agendar_visita", clear_on_submit=True):
+                v_col1, v_col2 = st.columns(2)
+                with v_col1:
+                    lead_sel_nome = st.selectbox("Selecione o Cliente / Lead *", list(leads_dict.keys()))
+                    imovel_sel_nome = st.selectbox("Selecione o Imóvel *", list(imoveis_dict.keys()))
+                    corretor_visita = st.selectbox("Corretor Acompanhante *", CORRETORES)
+                
+                with v_col2:
+                    data_v = st.date_input("Data da Visita *", min_value=date.today())
+                    hora_v = st.time_input("Horário da Visita *")
+                    obs_visita = st.text_input("Observações / Ponto de Encontro", placeholder="Ex: Encontrar na frente do imóvel.")
+
+                btn_salvar_visita = st.form_submit_button("🗓️ Agendar Visita", use_container_width=True, type="primary")
+
+                if btn_salvar_visita:
+                    lead_obj = leads_dict[lead_sel_nome]
+                    imovel_obj = imoveis_dict[imovel_sel_nome]
+
+                    payload_visita = {
+                        "lead_id": lead_obj.get("id"),
+                        "imovel_id": imovel_obj.get("id"),
+                        "corretor": corretor_visita,
+                        "data_visita": str(data_v),
+                        "hora_visita": hora_v.strftime("%H:%M"),
+                        "status": "Agendada",
+                        "observacoes": obs_visita
+                    }
+
+                    try:
+                        supabase.table("visitas").insert(payload_visita).execute()
+                        st.success("✅ Visita agendada com sucesso!")
+                        st.rerun()
+                    except Exception as err:
+                        st.error(f"Erro ao agendar visita. Verifique se a tabela 'visitas' foi criada no Supabase: {err}")
+
+    st.divider()
+    st.subheader("📋 Visitas Agendadas e Histórico")
+
+    if not visitas_data:
+        st.info("Nenhuma visita agendada até o momento.")
+    else:
+        # Mapeamentos para buscar detalhes rapidamente
+        leads_map = {l.get("id"): l for l in leads_data}
+        imoveis_map = {i.get("id"): i for i in imoveis_data}
+
+        for visita in visitas_data:
+            visita_id = visita.get("id")
+            v_lead = leads_map.get(visita.get("lead_id"), {})
+            v_imovel = imoveis_map.get(visita.get("imovel_id"), {})
+            status_v = visita.get("status", "Agendada")
+
+            with st.container():
+                st.markdown('<div class="stCard">', unsafe_allow_html=True)
+                col_info, col_status = st.columns([3, 1])
+
+                with col_info:
+                    st.subheader(f"🗓️ {visita.get('data_visita')} às {visita.get('hora_visita')} — Status: {status_v}")
+                    st.write(f"👤 **Cliente:** {v_lead.get('nome', 'Cliente não encontrado')} ({v_lead.get('whatsapp', '')})")
+                    st.write(f"🏠 **Imóvel:** [{v_imovel.get('codigo_imovel', 'N/A')}] {v_imovel.get('tipo', '')} no bairro **{v_imovel.get('bairro', '')}** — {v_imovel.get('endereco', '')}")
+                    st.write(f"🔑 **Corretor:** {visita.get('corretor', 'Não informado')}")
+                    if visita.get("observacoes"):
+                        st.write(f"📝 **Obs:** {visita.get('observacoes')}")
+
+                with col_status:
+                    novo_status_v = st.selectbox(
+                        "Alterar Status:",
+                        ["Agendada", "Realizada", "Cancelada", "Proposta Feita"],
+                        index=["Agendada", "Realizada", "Cancelada", "Proposta Feita"].index(status_v) if status_v in ["Agendada", "Realizada", "Cancelada", "Proposta Feita"] else 0,
+                        key=f"status_v_{visita_id}"
+                    )
+
+                    if novo_status_v != status_v:
+                        supabase.table("visitas").update({"status": novo_status_v}).eq("id", visita_id).execute()
+                        st.success("Status atualizado!")
+                        st.rerun()
+
+                    # Lembrete via WhatsApp
+                    if v_lead.get("whatsapp"):
+                        wa_clean = v_lead.get("whatsapp", "").replace("+", "").replace(" ", "").replace("-", "")
+                        msg_lembrete = f"Olá, {v_lead.get('nome')}! Tudo bem?\n\n"
+                        msg_lembrete += f"Passando para confirmar a nossa visita agendada:\n\n"
+                        msg_lembrete += f"📅 *Data:* {visita.get('data_visita')} às {visita.get('hora_visita')}\n"
+                        msg_lembrete += f"🏠 *Imóvel:* {v_imovel.get('tipo')} no bairro {v_imovel.get('bairro')}\n"
+                        if v_imovel.get('endereco'):
+                            msg_lembrete += f"📍 *Endereço:* {v_imovel.get('endereco')}\n"
+                        msg_lembrete += f"\nQualquer dúvida estou à disposição!"
+
+                        url_lembrete = f"https://wa.me/{wa_clean}?text={urllib.parse.quote(msg_lembrete)}"
+                        st.link_button("📲 Confirmar no WhatsApp", url_lembrete, type="primary")
+
+                st.markdown('</div>', unsafe_allow_html=True)
