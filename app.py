@@ -1,8 +1,25 @@
 import streamlit as st
-from supabase import create_client
-import urllib.parse
-import os
-from datetime import date, datetime
+from supabase import create_client, Client
+import pandas as pd
+from datetime import datetime
+
+# ==========================================
+# 📍 LISTA PADRÃO DE BAIRROS (PASSOS - MG)
+# ==========================================
+BAIRROS = [
+    "Aclimação", "Alto dos Maias", "Alvorada", "Antenas", "Aroeiras",
+    "Bela Vista 1", "Bela Vista 2", "Belo Horizonte", "Califórnia",
+    "Canadá 1", "Canadá 2", "Canadá 3", "Canjeranus", "Carmelo", "Centro",
+    "Cohab 4", "Cohab 5", "Coimbras", "Condomínio das Nações", "Condomínio Monte Belo",
+    "Eldorado", "Exposição", "Flamboyant", "Jacarandá", "Jardim América",
+    "Jardim Cidade", "Jardim Colégio de Passos", "Jardim Europa", "Jardim Florença",
+    "Jardim dos Lagos", "Mirante do Vale", "Muarama", "Nossa Senhora das Graças",
+    "Nossa Senhora de Fátima", "Nova Califórnia", "Nova Passos", "Novo Horizonte",
+    "Panorama", "Parque das Oliveiras", "Penha", "Penha 2", "Planalto",
+    "Polivalente", "Primavera", "Recanto do Bosque", "Santa Luzia", "São Benedito",
+    "São Francisco", "Tropical", "Vale Verde 1", "Vale Verde 2", "Vilagio D'Italia",
+    "Vila Rica"
+]
 
 # ==========================================
 # 🎨 PALETA DE CORES MENDES & SOARES
