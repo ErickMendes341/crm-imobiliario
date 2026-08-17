@@ -784,7 +784,6 @@ elif menu == "📅 Visitas Agendadas":
         if not leads_data or not imoveis_data:
             st.warning("É necessário ter pelo menos 1 Lead e 1 Imóvel cadastrado para agendar uma visita.")
         else:
-            # Dicionários auxiliares para seleção amigável
             leads_dict = {f"{l.get('nome')} ({l.get('whatsapp')})": l for l in leads_data}
             imoveis_dict = {f"[{i.get('codigo_imovel')}] {i.get('tipo')} no {i.get('bairro')}": i for i in imoveis_data}
 
@@ -821,7 +820,7 @@ elif menu == "📅 Visitas Agendadas":
                         st.success("✅ Visita agendada com sucesso!")
                         st.rerun()
                     except Exception as err:
-                        st.error(f"Erro ao agendar visita. Verifique se a tabela 'visitas' foi criada no Supabase: {err}")
+                        st.error(f"Erro ao agendar visita: {err}")
 
     st.divider()
     st.subheader("📋 Visitas Agendadas e Histórico")
@@ -829,7 +828,6 @@ elif menu == "📅 Visitas Agendadas":
     if not visitas_data:
         st.info("Nenhuma visita agendada até o momento.")
     else:
-        # Mapeamentos para buscar detalhes rapidamente
         leads_map = {l.get("id"): l for l in leads_data}
         imoveis_map = {i.get("id"): i for i in imoveis_data}
 
@@ -864,7 +862,6 @@ elif menu == "📅 Visitas Agendadas":
                         st.success("Status atualizado!")
                         st.rerun()
 
-                    # Lembrete via WhatsApp
                     if v_lead.get("whatsapp"):
                         wa_clean = v_lead.get("whatsapp", "").replace("+", "").replace(" ", "").replace("-", "")
                         msg_lembrete = f"Olá, {v_lead.get('nome')}! Tudo bem?\n\n"
@@ -877,5 +874,51 @@ elif menu == "📅 Visitas Agendadas":
 
                         url_lembrete = f"https://wa.me/{wa_clean}?text={urllib.parse.quote(msg_lembrete)}"
                         st.link_button("📲 Confirmar no WhatsApp", url_lembrete, type="primary")
+
+                # --- EXCLUIR VISITA ---
+                with st.expander(f"🗑️ Excluir Visita do dia {visita.get('data_visita')}"):
+                    st.warning("⚠️ Esta ação é permanente e removerá o agendamento do sistema.")
+                    confirma_excluir_visita = st.checkbox("Confirmar exclusão desta visita", key=f"chk_del_v_{visita_id}")
+                    if st.button("🚨 Excluir Agendamento Definitivamente", key=f"btn_del_v_{visita_id}", type="primary"):
+                        if confirma_excluir_visita:
+                            supabase.table("visitas").delete().eq("id", visita_id).execute()
+                            st.success("Agendamento excluído com sucesso!")
+                            st.rerun()
+
+                # --- EDITAR VISITA ---
+                with st.expander(f"✏️ Editar Agendamento"):
+                    with st.form(key=f"form_edit_visita_{visita_id}"):
+                        ev_c1, ev_c2 = st.columns(2)
+                        
+                        try:
+                            val_data_v = datetime.strptime(str(visita.get('data_visita')), "%Y-%m-%d").date()
+                        except Exception:
+                            val_data_v = date.today()
+
+                        try:
+                            val_hora_v = datetime.strptime(str(visita.get('hora_visita')), "%H:%M").time()
+                        except Exception:
+                            val_hora_v = datetime.now().time()
+
+                        idx_corr_v = CORRETORES.index(visita.get('corretor')) if visita.get('corretor') in CORRETORES else 0
+
+                        with ev_c1:
+                            ev_data = st.date_input("Nova Data", value=val_data_v, key=f"ev_d_{visita_id}")
+                            ev_hora = st.time_input("Novo Horário", value=val_hora_v, key=f"ev_h_{visita_id}")
+                        with ev_c2:
+                            ev_corretor = st.selectbox("Corretor Responsável", CORRETORES, index=idx_corr_v, key=f"ev_c_{visita_id}")
+                            ev_obs = st.text_input("Observações / Ponto de Encontro", value=visita.get('observacoes', ''), key=f"ev_o_{visita_id}")
+
+                        btn_salvar_ev = st.form_submit_button("💾 Salvar Alterações", use_container_width=True, type="primary")
+                        if btn_salvar_ev:
+                            dados_visita_atualizados = {
+                                "data_visita": str(ev_data),
+                                "hora_visita": ev_hora.strftime("%H:%M"),
+                                "corretor": str(ev_corretor),
+                                "observacoes": str(ev_obs)
+                            }
+                            supabase.table("visitas").update(dados_visita_atualizados).eq("id", visita_id).execute()
+                            st.success("✅ Agendamento atualizado com sucesso!")
+                            st.rerun()
 
                 st.markdown('</div>', unsafe_allow_html=True)
