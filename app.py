@@ -548,7 +548,6 @@ elif menu == "📝 Novo Imóvel":
                 st.rerun()
             except Exception as err:
                 st.error(f"Erro ao salvar imóvel: {err}")
-
 # ==========================================
 # 👤 ABA: NOVO LEAD
 # ==========================================
@@ -577,7 +576,7 @@ elif menu == "👤 Novo Lead":
             else:
                 bairros_str = ", ".join(l_bairros_sel) if l_bairros_sel else "Não informado"
 
-                # Payload mapeado exatamente conforme o Supabase
+                # Enviamos apenas as colunas padrão que existem na tabela
                 payload_novo_lead = {
                     "nome": str(l_nome),
                     "whatsapp": str(l_zap),
@@ -610,14 +609,14 @@ elif menu == "👥 Gerenciar Leads":
             l_id = lead.get('id')
             nome_lead = lead.get('nome') or 'Sem nome'
             zap_lead = lead.get('whatsapp') or 'S/N'
-            bairro_int = lead.get('bairros_interesse') or lead.get('bairro_interesse') or lead.get('bairro') or 'Não informado'
+            bairro_int = lead.get('bairros_interesse') or 'Não informado'
             
             try:
                 orc_max = float(lead.get('orcamento_max') or 0.0)
             except Exception:
                 orc_max = 0.0
 
-            corretor_lead = lead.get('corretor_respon') or lead.get('corretor') or 'Não informado'
+            corretor_lead = lead.get('corretor_respon') or 'Não informado'
             obs_lead = lead.get('observacoes') or ''
             status_lead = lead.get('status') or 'Em busca'
 
