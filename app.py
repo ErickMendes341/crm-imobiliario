@@ -577,11 +577,10 @@ elif menu == "👤 Novo Lead":
             else:
                 bairros_str = ", ".join(l_bairros_sel) if l_bairros_sel else "Não informado"
 
-                # Payload contendo estritamente as colunas existentes na tabela 'leads'
                 payload_novo_lead = {
                     "nome": str(l_nome),
                     "whatsapp": str(l_zap),
-                    "bairro_interesse": str(bairros_str),
+                    "bairro": str(bairros_str),
                     "orcamento_max": float(l_orc),
                     "corretor": str(l_corretor),
                     "observacoes": str(l_obs),
@@ -610,7 +609,7 @@ elif menu == "👥 Gerenciar Leads":
             l_id = lead.get('id')
             nome_lead = lead.get('nome') or 'Sem nome'
             zap_lead = lead.get('whatsapp') or 'S/N'
-            bairro_int = lead.get('bairro_interesse') or 'Não informado'
+            bairro_int = lead.get('bairro') or lead.get('bairro_interesse') or 'Não informado'
             
             try:
                 orc_max = float(lead.get('orcamento_max') or 0.0)
@@ -649,7 +648,6 @@ elif menu == "👥 Gerenciar Leads":
                             e_nome = st.text_input("Nome", value=str(nome_lead))
                             e_zap = st.text_input("WhatsApp", value=str(zap_lead))
                             
-                            # Pré-seleção dos bairros salvos anteriormente
                             bairros_atuais = [b.strip() for b in bairro_int.split(",")] if bairro_int != 'Não informado' else []
                             bairros_validos = [b for b in bairros_atuais if b in BAIRROS]
                             
@@ -665,7 +663,7 @@ elif menu == "👥 Gerenciar Leads":
                                 payload_edit = {
                                     "nome": str(e_nome),
                                     "whatsapp": str(e_zap),
-                                    "bairro_interesse": str(bairros_edit_str),
+                                    "bairro": str(bairros_edit_str),
                                     "orcamento_max": float(e_orc),
                                     "corretor": str(e_corretor),
                                     "observacoes": str(e_obs)
@@ -689,7 +687,6 @@ elif menu == "👥 Gerenciar Leads":
                                 st.error(f"Erro ao excluir lead: {err}")
 
                 st.markdown('</div>', unsafe_allow_html=True)
-
 
 # ==========================================
 # 🎯 ABA: ENCONTRAR MATCHES
