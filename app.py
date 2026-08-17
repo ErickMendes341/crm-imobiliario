@@ -539,12 +539,20 @@ elif menu == "👤 Novo Lead":
     st.write("Registre um novo cliente e suas preferências de compra.")
     st.divider()
 
+    # Busca lista predefinida de bairros (ou utiliza a variável BAIRROS definida no seu app)
+    lista_bairros_opcoes = BAIRROS if 'BAIRROS' in locals() or 'BAIRROS' in globals() else [
+        "Centro", "Vilagio D'Itália", "Bela Vista", "Jardim América", "São Francisco", "Outro"
+    ]
+
     with st.form("form_novo_lead", clear_on_submit=True):
         col_l1, col_l2 = st.columns(2)
         with col_l1:
             l_nome = st.text_input("Nome Completo *")
             l_zap = st.text_input("WhatsApp (com DDD) *")
-            l_bairro = st.text_input("Bairros de Interesse (ex: Centro, Vilagio D'Itália)")
+            
+            # Campo de seleção múltipla com lista predefinida
+            l_bairros_sel = st.multiselect("Bairros de Interesse *", options=lista_bairros_opcoes)
+            
         with col_l2:
             l_orc = st.number_input("Orçamento Máximo (R$)", min_value=0.0, step=10000.0)
             l_corretor = st.selectbox("Corretor Responsável *", CORRETORES)
@@ -556,12 +564,14 @@ elif menu == "👤 Novo Lead":
             if not l_nome or not l_zap:
                 st.error("Por favor, preencha o Nome e o WhatsApp.")
             else:
-                # Salva enviando variações de nome de coluna para compatibilidade total
+                # Junta os bairros selecionados em texto separado por vírgula
+                bairros_str = ", ".join(l_bairros_sel) if l_bairros_sel else "Não informado"
+
                 payload_novo_lead = {
                     "nome": str(l_nome),
                     "whatsapp": str(l_zap),
-                    "bairro_interesse": str(l_bairro),
-                    "bairro": str(l_bairro),
+                    "bairro_interesse": str(bairros_str),
+                    "bairro": str(bairros_str),
                     "orcamento_max": float(l_orc),
                     "orcamento": float(l_orc),
                     "corretor": str(l_corretor),
