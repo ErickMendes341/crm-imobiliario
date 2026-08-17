@@ -7,17 +7,15 @@ from datetime import date, datetime
 # ==========================================
 # 🎨 PALETA DE CORES MENDES & SOARES
 # ==========================================
-COR_AZUL_MARINHO = "#181e29"  # Fundo da logo / Sidebar / Títulos
-COR_DOURADO = "#c59b27"       # Dourado vibrante dos botões e destaques
-COR_DOURADO_HOVER = "#a37f1e" # Dourado mais escuro para efeito ao passar o mouse
-COR_FUNDO_PAGINA = "#f4f6f8"   # Cinza suave premium para leitura agradável
-COR_CARD = "#ffffff"          # Fundo branco para os cards
-COR_TEXTO = "#101620"          # Texto escuro refinado
+COR_AZUL_MARINHO = "#181e29"
+COR_DOURADO = "#c59b27"
+COR_DOURADO_HOVER = "#a37f1e"
+COR_FUNDO_PAGINA = "#f4f6f8"
+COR_CARD = "#ffffff"
+COR_TEXTO = "#101620"
 
-# --- LISTA DE CORRETORES ---
 CORRETORES = ["Erick Mendes", "Pedro Siqueira"]
 
-# --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
     page_title="Mendes & Soares | Engenharia e Imóveis",
     page_icon="🏠",
@@ -25,7 +23,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- LISTA DE BAIRROS DE PASSOS - MG ---
 BAIRROS_PASSOS = sorted([
     "Aclimação", "Alto dos Maias", "Alvorada", "Antenas", "Aroeiras",
     "Bela Vista 1 e 2", "Belo Horizonte", "Califórnia", "Canadá 1, 2 e 3",
@@ -40,7 +37,6 @@ BAIRROS_PASSOS = sorted([
     "São Francisco", "Tropical", "Vale Verde 1 e 2", "Vilagio D´Italia", "Vila Rica"
 ])
 
-# --- CONEXÃO SUPABASE ---
 SUPABASE_URL = "https://dsnamhmffvjxcfqtlzet.supabase.co"
 SUPABASE_KEY = "sb_publishable_XVO9PLxpxWBnr32_UYt_UA_HSdspi16"
 
@@ -50,7 +46,6 @@ def init_supabase():
 
 supabase = init_supabase()
 
-# --- FUNÇÕES DE DADOS ---
 def carregar_imoveis():
     res = supabase.table("imoveis").select("*").execute()
     return res.data if res.data else []
@@ -71,16 +66,31 @@ def gerar_codigo_imovel_auto():
     proximo_num = len(imoveis) + 1
     return f"MS-{proximo_num:03d}"
 
-# --- ESTILIZAÇÃO CSS PERSONALIZADA MENDES & SOARES ---
+# --- GERENCIAMENTO DE NAVEGAÇÃO ---
+OPCOES_MENU = [
+    "📊 Dashboard", 
+    "📋 Imóveis Cadastrados", 
+    "📝 Novo Imóvel", 
+    "👤 Novo Lead", 
+    "👥 Gerenciar Leads", 
+    "🎯 Encontrar Matches",
+    "📅 Visitas Agendadas"
+]
+
+if "aba_selecionada" not in st.session_state:
+    st.session_state["aba_selecionada"] = OPCOES_MENU[0]
+
+def navegar_para(aba):
+    st.session_state["aba_selecionada"] = aba
+
+# --- ESTILIZAÇÃO CSS ---
 st.markdown(f"""
     <style>
-    /* Fundo da aplicação */
     .stApp {{
         background-color: {COR_FUNDO_PAGINA};
         color: {COR_TEXTO};
     }}
     
-    /* Estilização da Sidebar Lateral */
     section[data-testid="stSidebar"] {{
         background-color: {COR_AZUL_MARINHO} !important;
     }}
@@ -91,7 +101,6 @@ st.markdown(f"""
         color: #e2e8f0 !important;
     }}
 
-    /* Estilização dos Cards do CRM */
     .stCard {{
         background-color: {COR_CARD};
         border-radius: 12px;
@@ -109,7 +118,6 @@ st.markdown(f"""
         box-shadow: 0 8px 24px rgba(24, 30, 41, 0.12);
     }}
 
-    /* Badge Elegante de Preço */
     .price-badge {{
         background: linear-gradient(135deg, {COR_DOURADO}, {COR_DOURADO_HOVER});
         color: #ffffff;
@@ -122,7 +130,6 @@ st.markdown(f"""
         box-shadow: 0 2px 6px rgba(197, 155, 39, 0.3);
     }}
 
-    /* Tags de Diferenciais */
     .feature-tag {{
         background-color: #f1f5f9;
         color: {COR_AZUL_MARINHO};
@@ -136,7 +143,6 @@ st.markdown(f"""
         border: 1px solid #cbd5e1;
     }}
 
-    /* Botões Primários Estilizados em Dourado */
     div.stButton > button[kind="primary"] {{
         background-color: {COR_DOURADO} !important;
         color: #ffffff !important;
@@ -150,7 +156,23 @@ st.markdown(f"""
         box-shadow: 0 4px 12px rgba(197, 155, 39, 0.4) !important;
     }}
 
-    /* Títulos */
+    /* Botões estilo Métrica no Dashboard */
+    div[data-testid="stColumn"] > div.stButton > button {{
+        width: 100%;
+        background-color: #ffffff;
+        border: 1px solid #cbd5e1;
+        border-top: 4px solid {COR_DOURADO};
+        border-radius: 10px;
+        padding: 15px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }}
+    div[data-testid="stColumn"] > div.stButton > button:hover {{
+        border-color: {COR_DOURADO};
+        box-shadow: 0 4px 12px rgba(197, 155, 39, 0.25);
+        background-color: #fffdf5;
+    }}
+
     h1, h2, h3 {{
         color: {COR_AZUL_MARINHO} !important;
         font-weight: 700 !important;
@@ -158,12 +180,10 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# --- CARREGAR DADOS ---
 imoveis_data = carregar_imoveis()
 leads_data = carregar_leads()
 visitas_data = carregar_visitas()
 
-# --- MENU LATERAL COM A LOGO MENDES & SOARES ---
 with st.sidebar:
     if os.path.exists("logo.png"):
         st.image("logo.png", use_container_width=True)
@@ -175,16 +195,8 @@ with st.sidebar:
 
     menu = st.radio(
         "Navegação do Sistema:",
-        [
-            "📊 Dashboard", 
-            "📋 Imóveis Cadastrados", 
-            "📝 Novo Imóvel", 
-            "👤 Novo Lead", 
-            "👥 Gerenciar Leads", 
-            "🎯 Encontrar Matches",
-            "📅 Visitas Agendadas"
-        ],
-        index=0
+        OPCOES_MENU,
+        key="aba_selecionada"
     )
 
     st.divider()
@@ -195,24 +207,51 @@ with st.sidebar:
 # ==========================================
 if menu == "📊 Dashboard":
     st.title("📊 Painel Geral — Mendes & Soares")
-    st.write("Métricas operacionais e gestão estratégica em tempo real.")
+    st.write("Métricas operacionais e gestão estratégica em tempo real. Clique em qualquer destaque para acessar a página.")
     st.divider()
 
-    col1, col2, col3, col4 = st.columns(4)
-    
     imoveis_disponiveis = [i for i in imoveis_data if i.get('status', 'Disponível') == 'Disponível']
     leads_ativos = [l for l in leads_data if l.get('status', 'Em busca') == 'Em busca']
     visitas_pendentes = [v for v in visitas_data if v.get('status', 'Agendada') == 'Agendada']
-    
-    with col1:
-        st.metric(label="🏠 Imóveis Disponíveis", value=len(imoveis_disponiveis))
-    with col2:
-        st.metric(label="👥 Leads Ativos", value=len(leads_ativos))
-    with col3:
-        st.metric(label="📅 Visitas Agendadas", value=len(visitas_pendentes))
-    with col4:
-        imoveis_vendidos = len(imoveis_data) - len(imoveis_disponiveis)
-        st.metric(label="✅ Imóveis Vendidos", value=imoveis_vendidos)
+    imoveis_vendidos = [i for i in imoveis_data if i.get('status') == 'Vendido']
+
+    # Cálculo de Matches Encontrados
+    total_matches = 0
+    for lead in leads_ativos:
+        orcamento = lead.get('orcamento_maximo', 0)
+        bairros = lead.get('bairros_interesse', [])
+        for imovel in imoveis_disponiveis:
+            preco_ok = imovel.get('valor_venda', 0) <= orcamento
+            bairro_ok = (not bairros) or (imovel.get('bairro') in bairros)
+            if preco_ok and bairro_ok:
+                total_matches += 1
+
+    c1, c2, c3, c4, c5 = st.columns(5)
+
+    with c1:
+        if st.button(f"🏠 Imóveis Disponíveis\n\n# {len(imoveis_disponiveis)}", key="btn_dash_imoveis"):
+            navegar_para("📋 Imóveis Cadastrados")
+            st.rerun()
+
+    with c2:
+        if st.button(f"👥 Leads Ativos\n\n# {len(leads_ativos)}", key="btn_dash_leads"):
+            navegar_para("👥 Gerenciar Leads")
+            st.rerun()
+
+    with c3:
+        if st.button(f"📅 Visitas Agendadas\n\n# {len(visitas_pendentes)}", key="btn_dash_visitas"):
+            navegar_para("📅 Visitas Agendadas")
+            st.rerun()
+
+    with c4:
+        if st.button(f"🎯 Matches Encontrados\n\n# {total_matches}", key="btn_dash_matches"):
+            navegar_para("🎯 Encontrar Matches")
+            st.rerun()
+
+    with c5:
+        if st.button(f"✅ Imóveis Vendidos\n\n# {len(imoveis_vendidos)}", key="btn_dash_vendidos"):
+            navegar_para("📋 Imóveis Cadastrados")
+            st.rerun()
 
 # ==========================================
 # 📋 ABA 2: IMÓVEIS CADASTRADOS
@@ -350,7 +389,6 @@ elif menu == "📋 Imóveis Cadastrados":
                             st.success(f"Status atualizado para: **{novo_status}**!")
                             st.rerun()
 
-                # --- EXCLUIR IMÓVEL ---
                 with st.expander(f"🗑️ Excluir Imóvel {imovel.get('codigo_imovel')}"):
                     st.warning("⚠️ Esta ação é permanente e removerá o imóvel da base de dados.")
                     confirma_excluir = st.checkbox("Confirmar exclusão deste imóvel", key=f"chk_del_{imovel_id}")
@@ -360,7 +398,6 @@ elif menu == "📋 Imóveis Cadastrados":
                             st.success(f"Imóvel **{imovel.get('codigo_imovel')}** removido com sucesso!")
                             st.rerun()
 
-                # --- EDITAR IMÓVEL ---
                 with st.expander(f"✏️ Editar imóvel {imovel.get('codigo_imovel')}"):
                     with st.form(key=f"form_edit_imovel_{imovel_id}"):
                         e_c1, e_c2, e_c3 = st.columns(3)
@@ -630,7 +667,6 @@ elif menu == "👥 Gerenciar Leads":
                         st.success("Status atualizado!")
                         st.rerun()
 
-                # --- EXCLUIR LEAD ---
                 with st.expander(f"🗑️ Excluir Lead {lead.get('nome')}"):
                     st.warning("⚠️ Esta ação é permanente e removerá o lead do sistema.")
                     confirma_excluir_lead = st.checkbox("Confirmar exclusão deste lead", key=f"chk_del_lead_{lead_id}")
@@ -640,7 +676,6 @@ elif menu == "👥 Gerenciar Leads":
                             st.success(f"Lead **{lead.get('nome')}** removido com sucesso!")
                             st.rerun()
 
-                # --- EDITAR LEAD ---
                 with st.expander(f"✏️ Editar dados de {lead.get('nome')}"):
                     with st.form(key=f"form_edit_lead_{lead_id}"):
                         el_c1, el_c2 = st.columns(2)
@@ -779,7 +814,6 @@ elif menu == "📅 Visitas Agendadas":
     st.write("Organize a agenda de visitas aos imóveis com clientes.")
     st.divider()
 
-    # --- FORMULÁRIO DE NOVO AGENDAMENTO ---
     with st.expander("➕ **Agendar Nova Visita**", expanded=True):
         if not leads_data or not imoveis_data:
             st.warning("É necessário ter pelo menos 1 Lead e 1 Imóvel cadastrado para agendar uma visita.")
@@ -875,7 +909,6 @@ elif menu == "📅 Visitas Agendadas":
                         url_lembrete = f"https://wa.me/{wa_clean}?text={urllib.parse.quote(msg_lembrete)}"
                         st.link_button("📲 Confirmar no WhatsApp", url_lembrete, type="primary")
 
-                # --- EXCLUIR VISITA ---
                 with st.expander(f"🗑️ Excluir Visita do dia {visita.get('data_visita')}"):
                     st.warning("⚠️ Esta ação é permanente e removerá o agendamento do sistema.")
                     confirma_excluir_visita = st.checkbox("Confirmar exclusão desta visita", key=f"chk_del_v_{visita_id}")
@@ -885,7 +918,6 @@ elif menu == "📅 Visitas Agendadas":
                             st.success("Agendamento excluído com sucesso!")
                             st.rerun()
 
-                # --- EDITAR VISITA ---
                 with st.expander(f"✏️ Editar Agendamento"):
                     with st.form(key=f"form_edit_visita_{visita_id}"):
                         ev_c1, ev_c2 = st.columns(2)
