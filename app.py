@@ -556,6 +556,16 @@ elif menu == "👤 Novo Lead":
     st.write("Registre um novo cliente e suas preferências de compra.")
     st.divider()
 
+    # 🔍 TESTE DE DIAGNÓSTICO DAS COLUNAS REAL DA TABELA 'LEADS'
+    try:
+        res = supabase.table("leads").select("*").limit(1).execute()
+        if res.data and len(res.data) > 0:
+            st.info(f"📋 Colunas encontradas no Supabase: {list(res.data[0].keys())}")
+        else:
+            st.info("ℹ️ Tabela 'leads' está vazia. Tentando inserir registro de teste...")
+    except Exception as e:
+        st.error(f"Erro ao ler tabela leads: {e}")
+
     with st.form("form_novo_lead", clear_on_submit=True):
         col_l1, col_l2 = st.columns(2)
         with col_l1:
@@ -576,14 +586,10 @@ elif menu == "👤 Novo Lead":
             else:
                 bairros_str = ", ".join(l_bairros_sel) if l_bairros_sel else "Não informado"
 
-                # Payload limpo com apenas os campos confirmados na sua tabela
+                # Enviamos apenas nome e whatsapp para garantir a gravação inicial
                 payload_novo_lead = {
                     "nome": str(l_nome),
-                    "whatsapp": str(l_zap),
-                    "bairros_interesse": str(bairros_str),
-                    "orcamento_max": float(l_orc),
-                    "observacoes": str(l_obs),
-                    "status": "Em busca"
+                    "whatsapp": str(l_zap)
                 }
                 try:
                     supabase.table("leads").insert(payload_novo_lead).execute()
