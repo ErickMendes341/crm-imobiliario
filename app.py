@@ -646,44 +646,81 @@ elif menu == "👥 Gerenciar Leads":
 # 🎯 ABA 6: ENCONTRAR MATCHES
 # ==========================================
 elif menu == "🎯 Encontrar Matches":
-    st.title("🎯 Cruzamento de Oportunidades (Matches)")
-    st.write("Cruze automaticamente os dados de leads ativos com o inventário disponível.")
+    st.title("🎯 Matches Imóvel x Lead")
+    st.write("Cruzamento inteligente de preferências entre leads cadastrados e imóveis disponíveis.")
     st.divider()
 
-    leads_em_busca = [l for l in leads_data if l.get('status', 'Em busca') == 'Em busca']
-
-    if not leads_em_busca:
-        st.info("Nenhum lead em busca cadastrado no momento.")
+    if not leads_data or not imoveis_data:
+        st.warning("É necessário ter leads e imóveis cadastrados para gerar cruzamentos.")
     else:
-        for lead in leads_em_busca:
-            orcamento_lead = float(lead.get('orcamento_maximo', 0))
-            bairros_lead = lead.get('bairros_interesse', [])
+        for lead in leads_data:
+            nome_lead = lead.get('nome', 'Cliente')
+            zap_lead = lead.get('whatsapp', '')
+            tipo_pref = lead.get('tipo_imovel_interesse') or lead.get('tipo_imovel')
+            bairro_pref = lead.get('bairro_interesse') or lead.get('bairro')
+            orcad_max = lead.get('orcamento_max') or lead.get('orcamento')
 
-            imoveis_compativeis = [
-                i for i in imoveis_data
-                if i.get('status', 'Disponível') == 'Disponível'
-                and float(i.get('valor_venda', 0)) <= orcamento_lead
-                and i.get('bairro') in bairros_lead
-            ]
+            # Filtra imóveis compatíveis
+            matches = []
+            for imovel in imoveis_data:
+                if imovel.get('status', 'Disponível') == 'Disponível':
+                    match_score = True
+                    if tipo_pref and tipo_pref.lower() not in imovel.get('tipo', '').lower():
+                        match_score = False
+                    if match_score:
+                        matches.append(imovel)
 
             with st.container():
                 st.markdown('<div class="stCard">', unsafe_allow_html=True)
-                st.subheader(f"👤 {lead.get('nome')} (Orçamento: R$ {orcamento_lead:,.2f})")
-                st.write(f"📍 **Bairros Desejados:** {', '.join(bairros_lead)}")
-
-                if not imoveis_compativeis:
-                    st.caption("⚠️ Nenhum imóvel disponível atende 100% aos critérios deste cliente.")
+                st.subheader(f"👤 Lead: {nome_lead}")
+                st.write(f"📱 **WhatsApp:** {zap_lead} | 🎯 **Interesse:** {tipo_pref or 'Geral'} em {bairro_pref or 'Qualquer bairro'}")
+                
+                if not matches:
+                    st.info("Nenhum imóvel compatível encontrado no momento.")
                 else:
-                    st.success(f"🎯 **{len(imoveis_compativeis)} Match(es) Encontrado(s)!**")
-                    for imovel_m in imoveis_compativeis:
+                    st.markdown(f"**{len(matches)} imóvel(is) encontrado(s) para este lead:**")
+                    for m in matches:
+                        cod_imovel = m.get('codigo_imovel', 'S/C')
+                        tipo_imovel = m.get('tipo', 'Imóvel')
+                        bairro_imovel = m.get('bairro', 'Excelente localização')
+                        quartos = m.get('quartos') or m.get('dormitorios') or 'N/I'
+                        vagas = m.get('vagas') or 'N/I'
+                        valor = m.get('valor_venda') or m.get('valor') or 'Sob consulta'
+                        
+                        # Formatação amigável de valor caso seja numérico
+                        if isinstance(valor, (int, float)):
+                            valor_fmt = f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                        else:
+                            valor_fmt = str(valor)
+
+                        # Montagem do texto personalizado para o WhatsApp
+                        msg_whatsapp = (
+                            f"Olá, {nome_lead}! Tudo bem?\n\n"
+                            f"Encontrei uma excelente opção de {tipo_imovel} que se encaixa no seu perfil "
+                            f"no bairro {bairro_imovel} (Ref: {cod_imovel}).\n\n"
+                            f"📌 *Destaques do imóvel:*\n"
+                            f"• {quartos} quarto(s)\n"
+                            f"• {vagas} vaga(s) de garagem\n"
+                            f"• Valor: {valor_fmt}\n\n"
+                            f"Posso te enviar as fotos detalhadas dele por aqui? "
+                            f"Se gostar, conseguimos agendar uma visita esta semana!"
+                        )
+
+                        # Limpa caracteres não numéricos do WhatsApp
+                        zap_limpo = ''.join(filter(str.isdigit, str(zap_lead)))
+                        if not zap_limpo.startswith("55") and len(zap_limpo) >= 10:
+                            zap_limpo = f"55{zap_limpo}"
+
+                        # Encode da mensagem para URL
+                        from urllib.parse import quote
+                        link_wa = f"https://wa.me/{zap_limpo}?text={quote(msg_whatsapp)}"
+
                         col_m1, col_m2 = st.columns([3, 1])
                         with col_m1:
-                            st.write(f"🏠 **{imovel_m.get('tipo')}** no bairro **{imovel_m.get('bairro')}** — **R$ {imovel_m.get('valor_venda', 0):,.2f}** (Cód: {imovel_m.get('codigo_imovel')})")
+                            st.write(f"🏠 **{cod_imovel}** — {tipo_imovel} no {bairro_imovel} | 🛏️ {quartos} qts | 🚗 {vagas} vagas | 💰 {valor_fmt}")
                         with col_m2:
-                            msg_encoded = urllib.parse.quote(f"Olá {lead.get('nome')}, encontrei uma excelente opção de imóvel para você! {imovel_m.get('tipo')} no bairro {imovel_m.get('bairro')}, Cód: {imovel_m.get('codigo_imovel')}.")
-                            tel_limpo = ''.join(filter(str.isdigit, str(lead.get('whatsapp', ''))))
-                            st.markdown(f'<a href="https://wa.me/{tel_limpo}?text={msg_encoded}" target="_blank" style="padding: 6px 12px; background-color: #25D366; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 0.85em;">📱 Enviar WhatsApp</a>', unsafe_allow_html=True)
-                
+                            st.markdown(f'<a href="{link_wa}" target="_blank" style="text-decoration:none;"><button style="background-color:#25D366;color:white;border:none;padding:8px 12px;border-radius:5px;cursor:pointer;width:100%;">💬 Enviar Match</button></a>', unsafe_allow_html=True)
+
                 st.markdown('</div>', unsafe_allow_html=True)
   # ==========================================
 # 📅 ABA 7: VISITAS AGENDADAS
