@@ -576,13 +576,12 @@ elif menu == "👤 Novo Lead":
             else:
                 bairros_str = ", ".join(l_bairros_sel) if l_bairros_sel else "Não informado"
 
-                # Enviamos apenas as colunas padrão que existem na tabela
+                # Payload limpo com apenas os campos confirmados na sua tabela
                 payload_novo_lead = {
                     "nome": str(l_nome),
                     "whatsapp": str(l_zap),
                     "bairros_interesse": str(bairros_str),
                     "orcamento_max": float(l_orc),
-                    "corretor_respon": str(l_corretor),
                     "observacoes": str(l_obs),
                     "status": "Em busca"
                 }
@@ -592,8 +591,6 @@ elif menu == "👤 Novo Lead":
                     st.rerun()
                 except Exception as err:
                     st.error(f"Erro ao salvar lead: {err}")
-
-
 # ==========================================
 # 👥 ABA: GERENCIAR LEADS
 # ==========================================
