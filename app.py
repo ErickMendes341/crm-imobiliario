@@ -7,15 +7,17 @@ from datetime import date, datetime
 # ==========================================
 # 🎨 PALETA DE CORES MENDES & SOARES
 # ==========================================
-COR_AZUL_MARINHO = "#181e29"
-COR_DOURADO = "#c59b27"
-COR_DOURADO_HOVER = "#a37f1e"
-COR_FUNDO_PAGINA = "#f4f6f8"
-COR_CARD = "#ffffff"
-COR_TEXTO = "#101620"
+COR_AZUL_MARINHO = "#181e29"  # Fundo da logo / Sidebar / Títulos
+COR_DOURADO = "#c59b27"       # Dourado vibrante dos botões e destaques
+COR_DOURADO_HOVER = "#a37f1e" # Dourado mais escuro para efeito ao passar o mouse
+COR_FUNDO_PAGINA = "#f4f6f8"   # Cinza suave premium para leitura agradável
+COR_CARD = "#ffffff"          # Fundo branco para os cards
+COR_TEXTO = "#101620"          # Texto escuro refinado
 
+# --- LISTA DE CORRETORES ---
 CORRETORES = ["Erick Mendes", "Pedro Siqueira"]
 
+# --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
     page_title="Mendes & Soares | Engenharia e Imóveis",
     page_icon="🏠",
@@ -23,6 +25,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# --- LISTA DE BAIRROS DE PASSOS - MG ---
 BAIRROS_PASSOS = sorted([
     "Aclimação", "Alto dos Maias", "Alvorada", "Antenas", "Aroeiras",
     "Bela Vista 1 e 2", "Belo Horizonte", "Califórnia", "Canadá 1, 2 e 3",
@@ -37,6 +40,7 @@ BAIRROS_PASSOS = sorted([
     "São Francisco", "Tropical", "Vale Verde 1 e 2", "Vilagio D´Italia", "Vila Rica"
 ])
 
+# --- CONEXÃO SUPABASE ---
 SUPABASE_URL = "https://dsnamhmffvjxcfqtlzet.supabase.co"
 SUPABASE_KEY = "sb_publishable_XVO9PLxpxWBnr32_UYt_UA_HSdspi16"
 
@@ -46,6 +50,7 @@ def init_supabase():
 
 supabase = init_supabase()
 
+# --- FUNÇÕES DE DADOS ---
 def carregar_imoveis():
     res = supabase.table("imoveis").select("*").execute()
     return res.data if res.data else []
@@ -66,31 +71,16 @@ def gerar_codigo_imovel_auto():
     proximo_num = len(imoveis) + 1
     return f"MS-{proximo_num:03d}"
 
-# --- GERENCIAMENTO DE NAVEGAÇÃO ---
-OPCOES_MENU = [
-    "📊 Dashboard", 
-    "📋 Imóveis Cadastrados", 
-    "📝 Novo Imóvel", 
-    "👤 Novo Lead", 
-    "👥 Gerenciar Leads", 
-    "🎯 Encontrar Matches",
-    "📅 Visitas Agendadas"
-]
-
-if "aba_selecionada" not in st.session_state:
-    st.session_state["aba_selecionada"] = OPCOES_MENU[0]
-
-def navegar_para(aba):
-    st.session_state["aba_selecionada"] = aba
-
-# --- ESTILIZAÇÃO CSS ---
+# --- ESTILIZAÇÃO CSS PERSONALIZADA MENDES & SOARES ---
 st.markdown(f"""
     <style>
+    /* Fundo da aplicação */
     .stApp {{
         background-color: {COR_FUNDO_PAGINA};
         color: {COR_TEXTO};
     }}
     
+    /* Estilização da Sidebar Lateral */
     section[data-testid="stSidebar"] {{
         background-color: {COR_AZUL_MARINHO} !important;
     }}
@@ -101,6 +91,7 @@ st.markdown(f"""
         color: #e2e8f0 !important;
     }}
 
+    /* Estilização dos Cards do CRM */
     .stCard {{
         background-color: {COR_CARD};
         border-radius: 12px;
@@ -118,6 +109,7 @@ st.markdown(f"""
         box-shadow: 0 8px 24px rgba(24, 30, 41, 0.12);
     }}
 
+    /* Badge Elegante de Preço */
     .price-badge {{
         background: linear-gradient(135deg, {COR_DOURADO}, {COR_DOURADO_HOVER});
         color: #ffffff;
@@ -130,6 +122,7 @@ st.markdown(f"""
         box-shadow: 0 2px 6px rgba(197, 155, 39, 0.3);
     }}
 
+    /* Tags de Diferenciais */
     .feature-tag {{
         background-color: #f1f5f9;
         color: {COR_AZUL_MARINHO};
@@ -143,6 +136,7 @@ st.markdown(f"""
         border: 1px solid #cbd5e1;
     }}
 
+    /* Botões Primários Estilizados em Dourado */
     div.stButton > button[kind="primary"] {{
         background-color: {COR_DOURADO} !important;
         color: #ffffff !important;
@@ -156,23 +150,7 @@ st.markdown(f"""
         box-shadow: 0 4px 12px rgba(197, 155, 39, 0.4) !important;
     }}
 
-    /* Botões estilo Métrica no Dashboard */
-    div[data-testid="stColumn"] > div.stButton > button {{
-        width: 100%;
-        background-color: #ffffff;
-        border: 1px solid #cbd5e1;
-        border-top: 4px solid {COR_DOURADO};
-        border-radius: 10px;
-        padding: 15px;
-        text-align: center;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    }}
-    div[data-testid="stColumn"] > div.stButton > button:hover {{
-        border-color: {COR_DOURADO};
-        box-shadow: 0 4px 12px rgba(197, 155, 39, 0.25);
-        background-color: #fffdf5;
-    }}
-
+    /* Títulos */
     h1, h2, h3 {{
         color: {COR_AZUL_MARINHO} !important;
         font-weight: 700 !important;
@@ -180,10 +158,12 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
+# --- CARREGAR DADOS ---
 imoveis_data = carregar_imoveis()
 leads_data = carregar_leads()
 visitas_data = carregar_visitas()
 
+# --- MENU LATERAL COM A LOGO MENDES & SOARES ---
 with st.sidebar:
     if os.path.exists("logo.png"):
         st.image("logo.png", use_container_width=True)
@@ -195,8 +175,16 @@ with st.sidebar:
 
     menu = st.radio(
         "Navegação do Sistema:",
-        OPCOES_MENU,
-        key="aba_selecionada"
+        [
+            "📊 Dashboard", 
+            "📋 Imóveis Cadastrados", 
+            "📝 Novo Imóvel", 
+            "👤 Novo Lead", 
+            "👥 Gerenciar Leads", 
+            "🎯 Encontrar Matches",
+            "📅 Visitas Agendadas"
+        ],
+        index=0
     )
 
     st.divider()
@@ -207,51 +195,24 @@ with st.sidebar:
 # ==========================================
 if menu == "📊 Dashboard":
     st.title("📊 Painel Geral — Mendes & Soares")
-    st.write("Métricas operacionais e gestão estratégica em tempo real. Clique em qualquer destaque para acessar a página.")
+    st.write("Métricas operacionais e gestão estratégica em tempo real.")
     st.divider()
 
+    col1, col2, col3, col4 = st.columns(4)
+    
     imoveis_disponiveis = [i for i in imoveis_data if i.get('status', 'Disponível') == 'Disponível']
     leads_ativos = [l for l in leads_data if l.get('status', 'Em busca') == 'Em busca']
     visitas_pendentes = [v for v in visitas_data if v.get('status', 'Agendada') == 'Agendada']
-    imoveis_vendidos = [i for i in imoveis_data if i.get('status') == 'Vendido']
-
-    # Cálculo de Matches Encontrados
-    total_matches = 0
-    for lead in leads_ativos:
-        orcamento = lead.get('orcamento_maximo', 0)
-        bairros = lead.get('bairros_interesse', [])
-        for imovel in imoveis_disponiveis:
-            preco_ok = imovel.get('valor_venda', 0) <= orcamento
-            bairro_ok = (not bairros) or (imovel.get('bairro') in bairros)
-            if preco_ok and bairro_ok:
-                total_matches += 1
-
-    c1, c2, c3, c4, c5 = st.columns(5)
-
-    with c1:
-        if st.button(f"🏠 Imóveis Disponíveis\n\n# {len(imoveis_disponiveis)}", key="btn_dash_imoveis"):
-            navegar_para("📋 Imóveis Cadastrados")
-            st.rerun()
-
-    with c2:
-        if st.button(f"👥 Leads Ativos\n\n# {len(leads_ativos)}", key="btn_dash_leads"):
-            navegar_para("👥 Gerenciar Leads")
-            st.rerun()
-
-    with c3:
-        if st.button(f"📅 Visitas Agendadas\n\n# {len(visitas_pendentes)}", key="btn_dash_visitas"):
-            navegar_para("📅 Visitas Agendadas")
-            st.rerun()
-
-    with c4:
-        if st.button(f"🎯 Matches Encontrados\n\n# {total_matches}", key="btn_dash_matches"):
-            navegar_para("🎯 Encontrar Matches")
-            st.rerun()
-
-    with c5:
-        if st.button(f"✅ Imóveis Vendidos\n\n# {len(imoveis_vendidos)}", key="btn_dash_vendidos"):
-            navegar_para("📋 Imóveis Cadastrados")
-            st.rerun()
+    
+    with col1:
+        st.metric(label="🏠 Imóveis Disponíveis", value=len(imoveis_disponiveis))
+    with col2:
+        st.metric(label="👥 Leads Ativos", value=len(leads_ativos))
+    with col3:
+        st.metric(label="📅 Visitas Agendadas", value=len(visitas_pendentes))
+    with col4:
+        imoveis_vendidos = len(imoveis_data) - len(imoveis_disponiveis)
+        st.metric(label="✅ Imóveis Vendidos", value=imoveis_vendidos)
 
 # ==========================================
 # 📋 ABA 2: IMÓVEIS CADASTRADOS
@@ -389,6 +350,7 @@ elif menu == "📋 Imóveis Cadastrados":
                             st.success(f"Status atualizado para: **{novo_status}**!")
                             st.rerun()
 
+                # --- EXCLUIR IMÓVEL ---
                 with st.expander(f"🗑️ Excluir Imóvel {imovel.get('codigo_imovel')}"):
                     st.warning("⚠️ Esta ação é permanente e removerá o imóvel da base de dados.")
                     confirma_excluir = st.checkbox("Confirmar exclusão deste imóvel", key=f"chk_del_{imovel_id}")
@@ -398,6 +360,7 @@ elif menu == "📋 Imóveis Cadastrados":
                             st.success(f"Imóvel **{imovel.get('codigo_imovel')}** removido com sucesso!")
                             st.rerun()
 
+                # --- EDITAR IMÓVEL ---
                 with st.expander(f"✏️ Editar imóvel {imovel.get('codigo_imovel')}"):
                     with st.form(key=f"form_edit_imovel_{imovel_id}"):
                         e_c1, e_c2, e_c3 = st.columns(3)
@@ -667,290 +630,250 @@ elif menu == "👥 Gerenciar Leads":
                         st.success("Status atualizado!")
                         st.rerun()
 
-                with st.expander(f"🗑️ Excluir Lead {lead.get('nome')}"):
-                    st.warning("⚠️ Esta ação é permanente e removerá o lead do sistema.")
+                # --- EXCLUIR LEAD ---
+                with st.expander(f"🗑️ Excluir Lead: {lead.get('nome')}"):
+                    st.warning("⚠️ Esta ação é permanente e removerá o lead da base de dados.")
                     confirma_excluir_lead = st.checkbox("Confirmar exclusão deste lead", key=f"chk_del_lead_{lead_id}")
-                    if st.button("🚨 Excluir Lead Definitivamente", key=f"btn_del_lead_{lead_id}", type="primary"):
+                    if st.button("🚨 Excluir Definitivamente", key=f"btn_del_lead_{lead_id}", type="primary"):
                         if confirma_excluir_lead:
                             supabase.table("leads").delete().eq("id", lead_id).execute()
                             st.success(f"Lead **{lead.get('nome')}** removido com sucesso!")
                             st.rerun()
 
-                with st.expander(f"✏️ Editar dados de {lead.get('nome')}"):
-                    with st.form(key=f"form_edit_lead_{lead_id}"):
-                        el_c1, el_c2 = st.columns(2)
-                        idx_corr_lead = CORRETORES.index(lead.get('corretor_responsavel')) if lead.get('corretor_responsavel') in CORRETORES else 0
-                        
-                        with el_c1:
-                            e_nome = st.text_input("Nome", value=lead.get('nome', ''), key=f"e_nome_{lead_id}")
-                            e_whatsapp = st.text_input("WhatsApp", value=lead.get('whatsapp', ''), key=f"e_wa_{lead_id}")
-                            e_corretor_l = st.selectbox("Corretor Responsável", CORRETORES, index=idx_corr_lead, key=f"e_corr_l_{lead_id}")
-                        with el_c2:
-                            bairros_atuais = lead.get('bairros_interesse', [])
-                            bairros_validos = [b for b in bairros_atuais if b in BAIRROS_PASSOS]
-                            e_bairros = st.multiselect("Bairros", BAIRROS_PASSOS, default=bairros_validos, key=f"e_bairros_{lead_id}")
-                            e_orcamento = st.number_input("Orçamento (R$)", min_value=0.0, value=float(lead.get('orcamento_maximo', 0.0)), step=10000.0, key=f"e_orc_{lead_id}")
-                        
-                        e_obs = st.text_area("Observações / Preferências do Cliente", value=lead.get('observacoes', ''), key=f"e_obs_{lead_id}")
-
-                        btn_salvar_lead = st.form_submit_button("💾 Salvar Alterações", use_container_width=True, type="primary")
-                        if btn_salvar_lead:
-                            dados_lead_atualizados = {
-                                "nome": str(e_nome),
-                                "whatsapp": str(e_whatsapp),
-                                "bairros_interesse": e_bairros,
-                                "orcamento_maximo": float(e_orcamento),
-                                "corretor_responsavel": str(e_corretor_l),
-                                "observacoes": str(e_obs)
-                            }
-                            supabase.table("leads").update(dados_lead_atualizados).eq("id", lead_id).execute()
-                            st.success("✅ Dados do Lead atualizados!")
-                            st.rerun()
-
                 st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# 🎯 ABA 6: MATCH INTELIGENTE
+# 🎯 ABA 6: ENCONTRAR MATCHES
 # ==========================================
 elif menu == "🎯 Encontrar Matches":
-    st.title("🎯 Automação de Match Imobiliário")
-    st.write("Leads ativos com imóveis compatíveis no catálogo da Mendes & Soares.")
+    st.title("🎯 Cruzamento de Oportunidades (Matches)")
+    st.write("Cruze automaticamente os dados de leads ativos com o inventário disponível.")
     st.divider()
 
-    imoveis_disponiveis = [i for i in imoveis_data if i.get('status', 'Disponível') == 'Disponível']
     leads_em_busca = [l for l in leads_data if l.get('status', 'Em busca') == 'Em busca']
-    total_leads_com_match = 0
 
     if not leads_em_busca:
-        st.info("Nenhum lead ativo no momento.")
+        st.info("Nenhum lead em busca cadastrado no momento.")
     else:
         for lead in leads_em_busca:
-            orcamento = lead.get('orcamento_maximo', 0)
-            bairros = lead.get('bairros_interesse', [])
-            corretor_nome = lead.get('corretor_responsavel', 'Mendes & Soares')
-            
-            matches = []
-            for imovel in imoveis_disponiveis:
-                preco_ok = imovel.get('valor_venda', 0) <= orcamento
-                bairro_ok = (not bairros) or (imovel.get('bairro') in bairros)
-                if preco_ok and bairro_ok:
-                    matches.append(imovel)
-            
-            if matches:
-                total_leads_com_match += 1
-                whatsapp_num = lead.get('whatsapp', '').replace("+", "").replace(" ", "").replace("-", "")
-                bairros_texto = ", ".join(bairros) if bairros else "Qualquer Bairro"
+            orcamento_lead = float(lead.get('orcamento_maximo', 0))
+            bairros_lead = lead.get('bairros_interesse', [])
+
+            imoveis_compativeis = [
+                i for i in imoveis_data
+                if i.get('status', 'Disponível') == 'Disponível'
+                and float(i.get('valor_venda', 0)) <= orcamento_lead
+                and i.get('bairro') in bairros_lead
+            ]
+
+            with st.container():
+                st.markdown('<div class="stCard">', unsafe_allow_html=True)
+                st.subheader(f"👤 {lead.get('nome')} (Orçamento: R$ {orcamento_lead:,.2f})")
+                st.write(f"📍 **Bairros Desejados:** {', '.join(bairros_lead)}")
+
+                if not imoveis_compativeis:
+                    st.caption("⚠️ Nenhum imóvel disponível atende 100% aos critérios deste cliente.")
+                else:
+                    st.success(f"🎯 **{len(imoveis_compativeis)} Match(es) Encontrado(s)!**")
+                    for imovel_m in imoveis_compativeis:
+                        col_m1, col_m2 = st.columns([3, 1])
+                        with col_m1:
+                            st.write(f"🏠 **{imovel_m.get('tipo')}** no bairro **{imovel_m.get('bairro')}** — **R$ {imovel_m.get('valor_venda', 0):,.2f}** (Cód: {imovel_m.get('codigo_imovel')})")
+                        with col_m2:
+                            msg_encoded = urllib.parse.quote(f"Olá {lead.get('nome')}, encontrei uma excelente opção de imóvel para você! {imovel_m.get('tipo')} no bairro {imovel_m.get('bairro')}, Cód: {imovel_m.get('codigo_imovel')}.")
+                            tel_limpo = ''.join(filter(str.isdigit, str(lead.get('whatsapp', ''))))
+                            st.markdown(f'<a href="https://wa.me/{tel_limpo}?text={msg_encoded}" target="_blank" style="padding: 6px 12px; background-color: #25D366; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 0.85em;">📱 Enviar WhatsApp</a>', unsafe_allow_html=True)
                 
-                with st.container():
-                    st.markdown('<div class="stCard">', unsafe_allow_html=True)
-                    
-                    c_lead, c_status = st.columns([3, 1])
-                    with c_lead:
-                        st.subheader(f"👤 {lead.get('nome')} — {lead.get('whatsapp')}")
-                        st.caption(f"💰 Orçamento Máx: **R$ {orcamento:,.2f}** | 📍 Bairros Desejados: **{bairros_texto}** | 🔑 Corretor: **{corretor_nome}**")
-                        if lead.get('observacoes'):
-                            st.caption(f"📝 Desejos: *{lead.get('observacoes')}*")
-
-                    with c_status:
-                        novo_status_lead = st.radio("Status:", ["Em busca", "Já comprou"], index=0, key=f"status_lead_match_{lead.get('id')}", horizontal=True)
-                        if novo_status_lead == "Já comprou":
-                            supabase.table("leads").update({"status": "Já comprou"}).eq("id", lead.get("id")).execute()
-                            st.success("Status alterado para 'Já comprou'!")
-                            st.rerun()
-
-                    st.markdown("---")
-                    st.write(f"🔥 **{len(matches)} Imóvel(is) Compatível(is) Encontrado(s):**")
-                    
-                    for m in matches:
-                        c1, c2 = st.columns([3, 1])
-                        
-                        caracteristicas_lista = []
-                        if m.get('quartos'): caracteristicas_lista.append(f"• {m.get('quartos')} quarto(s)")
-                        if m.get('suites'): caracteristicas_lista.append(f"• {m.get('suites')} suíte(s)")
-                        if m.get('banheiros'): caracteristicas_lista.append(f"• {m.get('banheiros')} banheiro(s)")
-                        if m.get('vagas_garagem'): caracteristicas_lista.append(f"• {m.get('vagas_garagem')} vaga(s) de garagem")
-                        if m.get('garagem_coberta'): caracteristicas_lista.append("• Garagem coberta")
-                        if m.get('sala'): caracteristicas_lista.append("• Sala de estar/jantar")
-                        if m.get('copa'): caracteristicas_lista.append("• Copa")
-                        if m.get('cozinha'): caracteristicas_lista.append("• Cozinha")
-                        if m.get('area_gourmet'): caracteristicas_lista.append("• Área gourmet / churrasqueira")
-                        if m.get('area_terreno'): caracteristicas_lista.append(f"• Lote de {m.get('area_terreno')} m²")
-                        if m.get('area_construida'): caracteristicas_lista.append(f"• Área construída de {m.get('area_construida')} m²")
-
-                        detalhes_resumidos = " | ".join(caracteristicas_lista[:4])
-                        
-                        with c1:
-                            st.markdown(f"**🏠 {m.get('tipo')} [{m.get('codigo_imovel')}]** — <span style='color:{COR_DOURADO}; font-weight:bold;'>R$ {m.get('valor_venda'):,.2f}</span>", unsafe_allow_html=True)
-                            st.write(f"📍 Bairro: **{m.get('bairro')}** {(' | ' + detalhes_resumidos) if detalhes_resumidos else ''}")
-                        
-                        with c2:
-                            msg_wa = f"Olá, {lead.get('nome')}! Tudo bem?\n\n"
-                            msg_wa += f"Aqui é o *{corretor_nome}* da *Mendes & Soares Engenharia e Imóveis*.\n\n"
-                            msg_wa += f"Encontrei uma excelente oportunidade de *{m.get('tipo')}* no bairro *{m.get('bairro')}* que combina com o seu perfil! [Cód: {m.get('codigo_imovel')}]\n\n"
-                            msg_wa += f"💰 *Valor:* R$ {m.get('valor_venda'):,.2f}\n\n"
-                            msg_wa += "✨ *Características do imóvel:*\n"
-                            
-                            for item in caracteristicas_lista:
-                                msg_wa += f"{item}\n"
-                            
-                            if m.get('descricao'):
-                                msg_wa += f"\n📝 *Descrição:* {m.get('descricao')}\n"
-                            
-                            msg_wa += f"\n*Posso te enviar as fotos do imóvel?*"
-                            
-                            url_wa = f"https://wa.me/{whatsapp_num}?text={urllib.parse.quote(msg_wa)}"
-                            st.link_button("📲 Enviar WhatsApp", url_wa, type="primary")
-
-                    st.markdown('</div>', unsafe_allow_html=True)
-
-        if total_leads_com_match == 0:
-            st.info("Nenhum match encontrado para os leads ativos no momento.")
-
-# ==========================================
+                st.markdown('</div>', unsafe_allow_html=True)
+  # ==========================================
 # 📅 ABA 7: VISITAS AGENDADAS
 # ==========================================
 elif menu == "📅 Visitas Agendadas":
-    st.title("📅 Agendamento e Gestão de Visitas")
-    st.write("Organize a agenda de visitas aos imóveis com clientes.")
+    st.title("📅 Gestão de Visitas")
+    st.write("Agende e acompanhe as visitas técnicas e comerciais aos imóveis.")
     st.divider()
 
-    with st.expander("➕ **Agendar Nova Visita**", expanded=True):
-        if not leads_data or not imoveis_data:
-            st.warning("É necessário ter pelo menos 1 Lead e 1 Imóvel cadastrado para agendar uma visita.")
-        else:
-            leads_dict = {f"{l.get('nome')} ({l.get('whatsapp')})": l for l in leads_data}
-            imoveis_dict = {f"[{i.get('codigo_imovel')}] {i.get('tipo')} no {i.get('bairro')}": i for i in imoveis_data}
+    # Dicionários auxiliares para busca rápida por ID e por Selectbox
+    mapa_leads_by_id = {str(l.get('id')): l for l in leads_data} if leads_data else {}
+    mapa_imoveis_by_id = {str(i.get('id')): i for i in imoveis_data} if imoveis_data else {}
 
-            with st.form("form_agendar_visita", clear_on_submit=True):
-                v_col1, v_col2 = st.columns(2)
-                with v_col1:
-                    lead_sel_nome = st.selectbox("Selecione o Cliente / Lead *", list(leads_dict.keys()))
-                    imovel_sel_nome = st.selectbox("Selecione o Imóvel *", list(imoveis_dict.keys()))
-                    corretor_visita = st.selectbox("Corretor Acompanhante *", CORRETORES)
-                
-                with v_col2:
-                    data_v = st.date_input("Data da Visita *", min_value=date.today())
-                    hora_v = st.time_input("Horário da Visita *")
-                    obs_visita = st.text_input("Observações / Ponto de Encontro", placeholder="Ex: Encontrar na frente do imóvel.")
+    dict_select_leads = {f"{l.get('nome')} | {l.get('whatsapp')}": str(l.get('id')) for l in leads_data} if leads_data else {}
+    dict_select_imoveis = {f"{i.get('codigo_imovel')} - {i.get('tipo')} ({i.get('bairro')})": str(i.get('id')) for i in imoveis_data} if imoveis_data else {}
 
-                btn_salvar_visita = st.form_submit_button("🗓️ Agendar Visita", use_container_width=True, type="primary")
+    with st.expander("➕ **Agendar Nova Visita**", expanded=False):
+        with st.form("form_visita", clear_on_submit=True):
+            col_v1, col_v2 = st.columns(2)
 
-                if btn_salvar_visita:
-                    lead_obj = leads_dict[lead_sel_nome]
-                    imovel_obj = imoveis_dict[imovel_sel_nome]
+            with col_v1:
+                lead_sel_label = st.selectbox("Selecione o Lead *", list(dict_select_leads.keys()) if dict_select_leads else ["Nenhum lead cadastrado"])
+                imovel_sel_label = st.selectbox("Selecione o Imóvel *", list(dict_select_imoveis.keys()) if dict_select_imoveis else ["Nenhum imóvel disponível"])
+                corretor_visita = st.selectbox("Corretor Acompanhante *", CORRETORES)
+            with col_v2:
+                data_visita = st.date_input("Data da Visita *", date.today())
+                hora_visita = st.time_input("Horário *")
+                obs_visita = st.text_area("Observações da Visita")
 
-                    payload_visita = {
-                        "lead_id": lead_obj.get("id"),
-                        "imovel_id": imovel_obj.get("id"),
-                        "corretor": corretor_visita,
-                        "data_visita": str(data_v),
-                        "hora_visita": hora_v.strftime("%H:%M"),
-                        "status": "Agendada",
-                        "observacoes": obs_visita
+            btn_visita = st.form_submit_button("📅 Confirmar Agendamento", use_container_width=True, type="primary")
+
+            if btn_visita:
+                if "Nenhum" in lead_sel_label or "Nenhum" in imovel_sel_label:
+                    st.error("Selecione um lead e um imóvel válidos.")
+                else:
+                    lead_id_val = dict_select_leads.get(lead_sel_label)
+                    imovel_id_val = dict_select_imoveis.get(imovel_sel_label)
+
+                    payload_v = {
+                        "lead_id": lead_id_val,
+                        "imovel_id": imovel_id_val,
+                        "corretor": str(corretor_visita),
+                        "data_visita": str(data_visita),
+                        "hora_visita": str(hora_visita),
+                        "observacoes": str(obs_visita),
+                        "status": "Agendada"
                     }
 
                     try:
-                        supabase.table("visitas").insert(payload_visita).execute()
+                        supabase.table("visitas").insert(payload_v).execute()
                         st.success("✅ Visita agendada com sucesso!")
                         st.rerun()
                     except Exception as err:
                         st.error(f"Erro ao agendar visita: {err}")
 
-    st.divider()
-    st.subheader("📋 Visitas Agendadas e Histórico")
-
+    st.subheader("📋 Visitas Cadastradas")
     if not visitas_data:
         st.info("Nenhuma visita agendada até o momento.")
     else:
-        leads_map = {l.get("id"): l for l in leads_data}
-        imoveis_map = {i.get("id"): i for i in imoveis_data}
+        for v in visitas_data:
+            v_id = v.get('id')
+            
+            # Resgate das chaves estrangeiras (UUIDs)
+            l_id = str(v.get('lead_id')) if v.get('lead_id') else None
+            i_id = str(v.get('imovel_id')) if v.get('imovel_id') else None
+            
+            # Busca o objeto real correspondente ao ID
+            obj_lead = mapa_leads_by_id.get(l_id, {})
+            obj_imovel = mapa_imoveis_by_id.get(i_id, {})
+            
+            # Monta o texto legível para exibição
+            if obj_lead:
+                lead_exibicao = f"{obj_lead.get('nome')} ({obj_lead.get('whatsapp', 'S/N')})"
+            else:
+                lead_exibicao = v.get('lead') or "Lead não encontrado"
 
-        for visita in visitas_data:
-            visita_id = visita.get("id")
-            v_lead = leads_map.get(visita.get("lead_id"), {})
-            v_imovel = imoveis_map.get(visita.get("imovel_id"), {})
-            status_v = visita.get("status", "Agendada")
+            if obj_imovel:
+                imovel_exibicao = f"{obj_imovel.get('codigo_imovel')} — {obj_imovel.get('tipo')} ({obj_imovel.get('bairro')})"
+            else:
+                imovel_exibicao = v.get('imovel') or "Imóvel não encontrado"
 
+            corretor_exibicao = v.get('corretor') or "Não informado"
+            data_exibicao = v.get('data_visita') or v.get('data') or "Data não informada"
+            hora_exibicao = v.get('hora_visita') or v.get('hora') or "Horário não informado"
+            obs_exibicao = v.get('observacoes') or ""
+            status_v = v.get('status', 'Agendada')
+            
             with st.container():
                 st.markdown('<div class="stCard">', unsafe_allow_html=True)
-                col_info, col_status = st.columns([3, 1])
+                
+                col_card1, col_card2 = st.columns([3, 1])
+                
+                with col_card1:
+                    st.write(f"📅 **Data/Hora:** {data_exibicao} às {hora_exibicao} | 🔑 **Corretor:** {corretor_exibicao}")
+                    st.write(f"👤 **Lead:** {lead_exibicao}")
+                    st.write(f"🏠 **Imóvel:** {imovel_exibicao}")
+                    if obs_exibicao:
+                        st.write(f"📝 **Obs:** {obs_exibicao}")
 
-                with col_info:
-                    st.subheader(f"🗓️ {visita.get('data_visita')} às {visita.get('hora_visita')} — Status: {status_v}")
-                    st.write(f"👤 **Cliente:** {v_lead.get('nome', 'Cliente não encontrado')} ({v_lead.get('whatsapp', '')})")
-                    st.write(f"🏠 **Imóvel:** [{v_imovel.get('codigo_imovel', 'N/A')}] {v_imovel.get('tipo', '')} no bairro **{v_imovel.get('bairro', '')}** — {v_imovel.get('endereco', '')}")
-                    st.write(f"🔑 **Corretor:** {visita.get('corretor', 'Não informado')}")
-                    if visita.get("observacoes"):
-                        st.write(f"📝 **Obs:** {visita.get('observacoes')}")
-
-                with col_status:
+                with col_card2:
+                    opcoes_status = ["Agendada", "Realizada", "Cancelada"]
+                    idx_status = opcoes_status.index(status_v) if status_v in opcoes_status else 0
+                    
                     novo_status_v = st.selectbox(
-                        "Alterar Status:",
-                        ["Agendada", "Realizada", "Cancelada", "Proposta Feita"],
-                        index=["Agendada", "Realizada", "Cancelada", "Proposta Feita"].index(status_v) if status_v in ["Agendada", "Realizada", "Cancelada", "Proposta Feita"] else 0,
-                        key=f"status_v_{visita_id}"
+                        "Status:", 
+                        opcoes_status, 
+                        index=idx_status, 
+                        key=f"v_status_{v_id}"
                     )
-
+                    
                     if novo_status_v != status_v:
-                        supabase.table("visitas").update({"status": novo_status_v}).eq("id", visita_id).execute()
+                        supabase.table("visitas").update({"status": novo_status_v}).eq("id", v_id).execute()
                         st.success("Status atualizado!")
                         st.rerun()
 
-                    if v_lead.get("whatsapp"):
-                        wa_clean = v_lead.get("whatsapp", "").replace("+", "").replace(" ", "").replace("-", "")
-                        msg_lembrete = f"Olá, {v_lead.get('nome')}! Tudo bem?\n\n"
-                        msg_lembrete += f"Passando para confirmar a nossa visita agendada:\n\n"
-                        msg_lembrete += f"📅 *Data:* {visita.get('data_visita')} às {visita.get('hora_visita')}\n"
-                        msg_lembrete += f"🏠 *Imóvel:* {v_imovel.get('tipo')} no bairro {v_imovel.get('bairro')}\n"
-                        if v_imovel.get('endereco'):
-                            msg_lembrete += f"📍 *Endereço:* {v_imovel.get('endereco')}\n"
-                        msg_lembrete += f"\nQualquer dúvida estou à disposição!"
-
-                        url_lembrete = f"https://wa.me/{wa_clean}?text={urllib.parse.quote(msg_lembrete)}"
-                        st.link_button("📲 Confirmar no WhatsApp", url_lembrete, type="primary")
-
-                with st.expander(f"🗑️ Excluir Visita do dia {visita.get('data_visita')}"):
-                    st.warning("⚠️ Esta ação é permanente e removerá o agendamento do sistema.")
-                    confirma_excluir_visita = st.checkbox("Confirmar exclusão desta visita", key=f"chk_del_v_{visita_id}")
-                    if st.button("🚨 Excluir Agendamento Definitivamente", key=f"btn_del_v_{visita_id}", type="primary"):
-                        if confirma_excluir_visita:
-                            supabase.table("visitas").delete().eq("id", visita_id).execute()
-                            st.success("Agendamento excluído com sucesso!")
-                            st.rerun()
-
-                with st.expander(f"✏️ Editar Agendamento"):
-                    with st.form(key=f"form_edit_visita_{visita_id}"):
-                        ev_c1, ev_c2 = st.columns(2)
-                        
+                # Botões de Ação (Editar e Excluir)
+                col_edit, col_del = st.columns([1, 1])
+                
+                with col_del:
+                    if st.button("🗑️ Excluir", key=f"btn_del_v_{v_id}", use_container_width=True):
                         try:
-                            val_data_v = datetime.strptime(str(visita.get('data_visita')), "%Y-%m-%d").date()
-                        except Exception:
-                            val_data_v = date.today()
-
-                        try:
-                            val_hora_v = datetime.strptime(str(visita.get('hora_visita')), "%H:%M").time()
-                        except Exception:
-                            val_hora_v = datetime.now().time()
-
-                        idx_corr_v = CORRETORES.index(visita.get('corretor')) if visita.get('corretor') in CORRETORES else 0
-
-                        with ev_c1:
-                            ev_data = st.date_input("Nova Data", value=val_data_v, key=f"ev_d_{visita_id}")
-                            ev_hora = st.time_input("Novo Horário", value=val_hora_v, key=f"ev_h_{visita_id}")
-                        with ev_c2:
-                            ev_corretor = st.selectbox("Corretor Responsável", CORRETORES, index=idx_corr_v, key=f"ev_c_{visita_id}")
-                            ev_obs = st.text_input("Observações / Ponto de Encontro", value=visita.get('observacoes', ''), key=f"ev_o_{visita_id}")
-
-                        btn_salvar_ev = st.form_submit_button("💾 Salvar Alterações", use_container_width=True, type="primary")
-                        if btn_salvar_ev:
-                            dados_visita_atualizados = {
-                                "data_visita": str(ev_data),
-                                "hora_visita": ev_hora.strftime("%H:%M"),
-                                "corretor": str(ev_corretor),
-                                "observacoes": str(ev_obs)
-                            }
-                            supabase.table("visitas").update(dados_visita_atualizados).eq("id", visita_id).execute()
-                            st.success("✅ Agendamento atualizado com sucesso!")
+                            supabase.table("visitas").delete().eq("id", v_id).execute()
+                            st.success("Visita excluída com sucesso!")
                             st.rerun()
+                        except Exception as err:
+                            st.error(f"Erro ao excluir visita: {err}")
+
+                with col_edit:
+                    exp_edit = st.expander("✏️ Editar Visita")
+                    with exp_edit:
+                        with st.form(key=f"form_edit_visita_{v_id}"):
+                            # Preparar índices padrão para os selectboxes
+                            keys_leads = list(dict_select_leads.keys())
+                            keys_imoveis = list(dict_select_imoveis.keys())
+                            
+                            idx_lead = 0
+                            for idx, key in enumerate(keys_leads):
+                                if dict_select_leads[key] == l_id:
+                                    idx_lead = idx
+                                    break
+                            
+                            idx_imovel = 0
+                            for idx, key in enumerate(keys_imoveis):
+                                if dict_select_imoveis[key] == i_id:
+                                    idx_imovel = idx
+                                    break
+
+                            idx_corretor = CORRETORES.index(corretor_exibicao) if corretor_exibicao in CORRETORES else 0
+
+                            # Tratar data e hora para os inputs
+                            try:
+                                d_val = datetime.strptime(data_exibicao, "%Y-%m-%d").date()
+                            except Exception:
+                                d_val = date.today()
+
+                            try:
+                                h_val = datetime.strptime(hora_exibicao, "%H:%M:%S").time()
+                            except Exception:
+                                try:
+                                    h_val = datetime.strptime(hora_exibicao, "%H:%M").time()
+                                except Exception:
+                                    h_val = datetime.now().time()
+
+                            edit_lead_label = st.selectbox("Lead *", keys_leads if keys_leads else ["Nenhum lead"], index=idx_lead)
+                            edit_imovel_label = st.selectbox("Imóvel *", keys_imoveis if keys_imoveis else ["Nenhum imóvel"], index=idx_imovel)
+                            edit_corretor = st.selectbox("Corretor *", CORRETORES, index=idx_corretor)
+                            edit_data = st.date_input("Data *", d_val)
+                            edit_hora = st.time_input("Horário *", h_val)
+                            edit_obs = st.text_area("Observações", value=obs_exibicao)
+
+                            btn_salvar_edit = st.form_submit_button("💾 Salvar Alterações", use_container_width=True, type="primary")
+
+                            if btn_salvar_edit:
+                                lead_id_updated = dict_select_leads.get(edit_lead_label)
+                                imovel_id_updated = dict_select_imoveis.get(edit_imovel_label)
+
+                                payload_update = {
+                                    "lead_id": lead_id_updated,
+                                    "imovel_id": imovel_id_updated,
+                                    "corretor": str(edit_corretor),
+                                    "data_visita": str(edit_data),
+                                    "hora_visita": str(edit_hora),
+                                    "observacoes": str(edit_obs)
+                                }
+
+                                try:
+                                    supabase.table("visitas").update(payload_update).eq("id", v_id).execute()
+                                    st.success("Visita atualizada!")
+                                    st.rerun()
+                                except Exception as err:
+                                    st.error(f"Erro ao atualizar visita: {err}")
 
                 st.markdown('</div>', unsafe_allow_html=True)
