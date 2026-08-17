@@ -540,17 +540,36 @@ elif menu == "👤 Novo Lead":
             bairros_interesse = st.multiselect("Bairros de Interesse (Passos-MG) *", BAIRROS_PASSOS, default=["Centro"])
             orcamento = st.number_input("Orçamento Máximo (R$) *", min_value=0.0, value=500000.0, step=10000.0)
         
+        st.divider()
+        observacoes = st.text_area("📝 Preferências / O que o cliente procura?", placeholder="Ex: Procura casa térrea, com quintal grande, suite com closet e piscina. Aceita financiamento.")
+
         submitted_lead = st.form_submit_button("💾 Salvar Lead", use_container_width=True, type="primary")
         if submitted_lead:
             if not nome or not bairros_interesse:
                 st.error("Por favor, preencha o Nome e escolha ao menos um Bairro de interesse.")
             else:
-                dados_lead = {
-                    "nome": nome, "whatsapp": whatsapp, "bairros_interesse": bairros_interesse,
-                    "orcamento_maximo": orcamento, "corretor_responsavel": corretor_lead, "status": "Em busca"
+                payload_lead = {
+                    "nome": nome, 
+                    "whatsapp": whatsapp, 
+                    "bairros_interesse": bairros_interesse,
+                    "orcamento_maximo": orcamento, 
+                    "corretor_responsavel": corretor_lead, 
+                    "observacoes": observacoes,
+                    "status": "Em busca"
                 }
-                supabase.table("leads").insert(dados_lead).execute()
-                st.success(f"✅ Lead **{nome}** cadastrado com sucesso!")
+                
+                # Trata envio seguro verificando colunas existentes
+                if leads_data:
+                    colunas_lead_existentes = list(leads_data[0].keys())
+                    dados_lead = {k: v for k, v in payload_lead.items() if k in colunas_lead_existentes}
+                else:
+                    dados_lead = payload_lead
+
+                try:
+                    supabase.table("leads").insert(dados_lead).execute()
+                    st.success(f"✅ Lead **{nome}** cadastrado com sucesso!")
+                except Exception as err:
+                    st.error(f"Erro ao salvar lead: {err}")
 
 # ==========================================
 # 👥 ABA 5: GERENCIAR LEADS
@@ -593,6 +612,8 @@ elif menu == "👥 Gerenciar Leads":
                     bairros_str = ", ".join(lead.get('bairros_interesse', [])) if lead.get('bairros_interesse') else "Nenhum"
                     st.write(f"📍 **Bairros de Interesse:** {bairros_str}")
                     st.write(f"💰 **Orçamento Máximo:** R$ {lead.get('orcamento_maximo', 0):,.2f} | 🔑 **Corretor:** {lead.get('corretor_responsavel', 'Não informado')}")
+                    if lead.get('observacoes'):
+                        st.write(f"📝 **Desejos / Obs:** {lead.get('observacoes')}")
                 
                 with col2:
                     novo_status_lead = st.radio("Status do Lead:", ["Em busca", "Já comprou"], index=0 if status_lead == "Em busca" else 1, key=f"status_direct_{lead_id}")
@@ -627,6 +648,8 @@ elif menu == "👥 Gerenciar Leads":
                             e_bairros = st.multiselect("Bairros", BAIRROS_PASSOS, default=bairros_validos, key=f"e_bairros_{lead_id}")
                             e_orcamento = st.number_input("Orçamento (R$)", min_value=0.0, value=float(lead.get('orcamento_maximo', 0.0)), step=10000.0, key=f"e_orc_{lead_id}")
                         
+                        e_obs = st.text_area("Observações / Preferências do Cliente", value=lead.get('observacoes', ''), key=f"e_obs_{lead_id}")
+
                         btn_salvar_lead = st.form_submit_button("💾 Salvar Alterações", use_container_width=True, type="primary")
                         if btn_salvar_lead:
                             dados_lead_atualizados = {
@@ -634,7 +657,8 @@ elif menu == "👥 Gerenciar Leads":
                                 "whatsapp": str(e_whatsapp),
                                 "bairros_interesse": e_bairros,
                                 "orcamento_maximo": float(e_orcamento),
-                                "corretor_responsavel": str(e_corretor_l)
+                                "corretor_responsavel": str(e_corretor_l),
+                                "observacoes": str(e_obs)
                             }
                             supabase.table("leads").update(dados_lead_atualizados).eq("id", lead_id).execute()
                             st.success("✅ Dados do Lead atualizados!")
@@ -681,7 +705,9 @@ elif menu == "🎯 Encontrar Matches":
                     with c_lead:
                         st.subheader(f"👤 {lead.get('nome')} — {lead.get('whatsapp')}")
                         st.caption(f"💰 Orçamento Máx: **R$ {orcamento:,.2f}** | 📍 Bairros Desejados: **{bairros_texto}** | 🔑 Corretor: **{corretor_nome}**")
-                    
+                        if lead.get('observacoes'):
+                            st.caption(f"📝 Desejos: *{lead.get('observacoes')}*")
+
                     with c_status:
                         novo_status_lead = st.radio("Status:", ["Em busca", "Já comprou"], index=0, key=f"status_lead_match_{lead.get('id')}", horizontal=True)
                         if novo_status_lead == "Já comprou":
