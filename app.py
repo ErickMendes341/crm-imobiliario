@@ -144,14 +144,14 @@ def gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor):
         4. Mantenha um tom profissional, elegante e acolhedor.
         5. Termine convidando o cliente para agendar uma visita com a equipe da Mendes & Soares.
         """
+        # Modelo atualizado para gemini-1.5-flash
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-1.5-flash',
             contents=prompt,
         )
         return response.text
     except Exception as e:
         return f"Erro ao gerar descrição com IA: {str(e)}"
-
 # --- FUNÇÕES DE DADOS ---
 def carregar_imoveis():
     try:
