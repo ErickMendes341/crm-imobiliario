@@ -4,11 +4,13 @@ import urllib.parse
 import os
 from datetime import date, datetime
 from io import BytesIO
+import requests
+from PIL import Image as PILImage
 
 # --- NOVAS IMPORTAÇÕES PARA PDF E IA ---
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from google import genai
 
@@ -58,7 +60,7 @@ def init_supabase():
 
 supabase = init_supabase()
 
-# --- FUNÇÃO DE GERAÇÃO DE PDF DE VENDAS ---
+# --- FUNÇÃO DE GERAÇÃO DE PDF DE VENDAS (COM SUPORTE A FOTOS) ---
 def gerar_pdf_imovel(imovel):
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
@@ -75,7 +77,20 @@ def gerar_pdf_imovel(imovel):
 
     story.append(Paragraph(f"<b>{imovel.get('tipo', 'Imóvel')} - {imovel.get('bairro', '')}</b>", title_style))
     story.append(Paragraph(f"Código: {imovel.get('codigo_imovel', 'N/A')} | Valor: R$ {float(imovel.get('valor_venda', 0)):,.2f}", styles['Heading2']))
-    story.append(Spacer(1, 15))
+    story.append(Spacer(1, 10))
+
+    # Adicionar Foto Principal no PDF se houver
+    fotos_urls = imovel.get("fotos_urls") or []
+    if fotos_urls and len(fotos_urls) > 0:
+        try:
+            resp = requests.get(fotos_urls[0], timeout=5)
+            if resp.status_code == 200:
+                img_data = BytesIO(resp.content)
+                img = Image(img_data, width=400, height=250)
+                story.append(img)
+                story.append(Spacer(1, 15))
+        except Exception:
+            pass  # Caso haja erro no download da foto, segue sem interromper o PDF
 
     dados_tabela = [
         ["Quartos", "Suítes", "Banheiros", "Vagas"],
@@ -115,7 +130,7 @@ def gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor):
         client = genai.Client(api_key=api_key)
         prompt = f"""
         Você é um copywriter especialista no mercado imobiliário da Mendes & Soares Engenharia e Imóveis.
-        Escreva uma descrição comercial highly atraente e persuasiva para o seguinte imóvel:
+        Escreva uma descrição comercial altamente atraente e persuasiva para o seguinte imóvel:
         - Tipo: {tipo}
         - Bairro: {bairro} (Passos-MG)
         - Quartos: {quartos} (sendo {suites} suítes)
@@ -182,13 +197,10 @@ def gerar_codigo_imovel_auto():
 # --- ESTILIZAÇÃO CSS PERSONALIZADA MENDES & SOARES ---
 st.markdown(f"""
     <style>
-    /* Fundo da aplicação */
     .stApp {{
         background-color: {COR_FUNDO_PAGINA};
         color: {COR_TEXTO};
     }}
-    
-    /* Estilização da Sidebar Lateral */
     section[data-testid="stSidebar"] {{
         background-color: {COR_AZUL_MARINHO} !important;
     }}
@@ -198,8 +210,6 @@ st.markdown(f"""
     section[data-testid="stSidebar"] .stRadio label {{
         color: #e2e8f0 !important;
     }}
-
-    /* Estilização dos Cards do CRM */
     .stCard {{
         background-color: {COR_CARD};
         border-radius: 12px;
@@ -216,8 +226,6 @@ st.markdown(f"""
         transform: translateY(-2px);
         box-shadow: 0 8px 24px rgba(24, 30, 41, 0.12);
     }}
-
-    /* Badge Elegante de Preço */
     .price-badge {{
         background: linear-gradient(135deg, {COR_DOURADO}, {COR_DOURADO_HOVER});
         color: #ffffff;
@@ -229,8 +237,6 @@ st.markdown(f"""
         text-align: center;
         box-shadow: 0 2px 6px rgba(197, 155, 39, 0.3);
     }}
-
-    /* Tags de Diferenciais */
     .feature-tag {{
         background-color: #f1f5f9;
         color: {COR_AZUL_MARINHO};
@@ -243,8 +249,6 @@ st.markdown(f"""
         margin-bottom: 6px;
         border: 1px solid #cbd5e1;
     }}
-
-    /* Botões Primários Estilizados em Dourado */
     div.stButton > button[kind="primary"] {{
         background-color: {COR_DOURADO} !important;
         color: #ffffff !important;
@@ -257,8 +261,6 @@ st.markdown(f"""
         background-color: {COR_DOURADO_HOVER} !important;
         box-shadow: 0 4px 12px rgba(197, 155, 39, 0.4) !important;
     }}
-
-    /* Títulos */
     h1, h2, h3 {{
         color: {COR_AZUL_MARINHO} !important;
         font-weight: 700 !important;
@@ -562,103 +564,101 @@ elif menu == "📝 Novo Imóvel":
 
     codigo_gerado = gerar_codigo_imovel_auto()
 
-    with st.form("form_imovel", clear_on_submit=True):
-        st.subheader("📌 Informações Básicas")
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            st.text_input("Código do Imóvel", value=codigo_gerado, disabled=True)
-            tipo = st.selectbox("Tipo de Imóvel", ["Casa", "Apartamento", "Terreno", "Sobrado", "Cobertura", "Sítio/Chácara"])
-            corretor_captacao = st.selectbox("Corretor que Captou *", CORRETORES)
-        with c2:
-            bairro = st.selectbox("Bairro (Passos-MG) *", BAIRROS_PASSOS)
-            valor = st.number_input("Valor de Venda (R$) *", min_value=0.0, value=350000.0, step=10000.0)
-            endereco = st.text_input("Endereço / Rua e Número")
-        with c3:
-            area_terreno = st.number_input("Tamanho do Lote (m²)", min_value=0.0, value=250.0, step=10.0)
-            area_construida = st.number_input("Área Construída (m²)", min_value=0.0, value=120.0, step=10.0)
+    st.subheader("📌 Informações Básicas")
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.text_input("Código do Imóvel", value=codigo_gerado, disabled=True)
+        tipo = st.selectbox("Tipo de Imóvel", ["Casa", "Apartamento", "Terreno", "Sobrado", "Cobertura", "Sítio/Chácara"])
+        corretor_captacao = st.selectbox("Corretor que Captou *", CORRETORES)
+    with c2:
+        bairro = st.selectbox("Bairro (Passos-MG) *", BAIRROS_PASSOS)
+        valor = st.number_input("Valor de Venda (R$) *", min_value=0.0, value=350000.0, step=10000.0)
+        endereco = st.text_input("Endereço / Rua e Número")
+    with c3:
+        area_terreno = st.number_input("Tamanho do Lote (m²)", min_value=0.0, value=250.0, step=10.0)
+        area_construida = st.number_input("Área Construída (m²)", min_value=0.0, value=120.0, step=10.0)
 
-        st.divider()
-        st.subheader("👤 Dados do Proprietário")
-        cp1, cp2 = st.columns(2)
-        with cp1:
-            nome_proprietario = st.text_input("Nome do Proprietário *")
-        with cp2:
-            telefone_proprietario = st.text_input("Telefone do Proprietário", placeholder="(35) 99999-9999")
+    st.divider()
+    st.subheader("👤 Dados do Proprietário")
+    cp1, cp2 = st.columns(2)
+    with cp1:
+        nome_proprietario = st.text_input("Nome do Proprietário *")
+    with cp2:
+        telefone_proprietario = st.text_input("Telefone do Proprietário", placeholder="(35) 99999-9999")
 
-        st.divider()
-        st.subheader("🛏️ Cômodos e Vagas")
-        c4, c5, c6, c7 = st.columns(4)
-        with c4: quartos = st.number_input("Dormitórios / Quartos", min_value=0, value=3, step=1)
-        with c5: suites = st.number_input("Suítes", min_value=0, value=1, step=1)
-        with c6: banheiros = st.number_input("Banheiros (Total)", min_value=0, value=2, step=1)
-        with c7: vagas = st.number_input("Vagas de Garagem", min_value=0, value=2, step=1)
+    st.divider()
+    st.subheader("🛏️ Cômodos e Vagas")
+    c4, c5, c6, c7 = st.columns(4)
+    with c4: quartos = st.number_input("Dormitórios / Quartos", min_value=0, value=3, step=1)
+    with c5: suites = st.number_input("Suítes", min_value=0, value=1, step=1)
+    with c6: banheiros = st.number_input("Banheiros (Total)", min_value=0, value=2, step=1)
+    with c7: vagas = st.number_input("Vagas de Garagem", min_value=0, value=2, step=1)
 
-        st.divider()
-        st.subheader("✨ Ambientes e Diferenciais")
-        cd1, cd2 = st.columns(2)
-        with cd1:
-            sala = st.checkbox("Sala de Estar/Jantar", value=True)
-            copa = st.checkbox("Copa", value=False)
-            cozinha = st.checkbox("Cozinha", value=True)
-        with cd2:
-            garagem_coberta = st.checkbox("🚘 Garagem Coberta")
-            area_gourmet = st.checkbox("🍖 Área Gourmet / Churrasqueira")
+    st.divider()
+    st.subheader("✨ Ambientes e Diferenciais")
+    cd1, cd2 = st.columns(2)
+    with cd1:
+        sala = st.checkbox("Sala de Estar/Jantar", value=True)
+        copa = st.checkbox("Copa", value=False)
+        cozinha = st.checkbox("Cozinha", value=True)
+    with cd2:
+        garagem_coberta = st.checkbox("🚘 Garagem Coberta")
+        area_gourmet = st.checkbox("🍖 Área Gourmet / Churrasqueira")
 
-        st.divider()
+    st.divider()
+    
+    st.subheader("📝 Descrição do Imóvel")
+    if st.button("✨ Gerar Descrição com IA"):
+        with st.spinner("A IA está criando o texto para o imóvel..."):
+            desc_ia = gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor)
+            st.session_state['descricao_temp'] = desc_ia
+            st.rerun()
+
+    descricao = st.text_area(
+        "Descrição Geral / Observações", 
+        value=st.session_state.get('descricao_temp', ''),
+        height=150
+    )
+    
+    fotos = st.file_uploader("📷 Fotos do Imóvel", type=["jpg", "png", "jpeg"], accept_multiple_files=True)
+    
+    if st.button("💾 Salvar Imóvel", use_container_width=True, type="primary"):
+        urls_fotos = []
+        if fotos:
+            for foto in fotos:
+                caminho_storage = f"imoveis/{codigo_gerado}_{foto.name}"
+                res = supabase.storage.from_("fotos-imoveis").upload(caminho_storage, foto.getvalue(), {"content-type": foto.type})
+                url_publica = supabase.storage.from_("fotos-imoveis").get_public_url(caminho_storage)
+                urls_fotos.append(url_publica)
         
-        st.subheader("📝 Descrição do Imóvel")
-        if st.form_submit_button("✨ Gerar Descrição com IA"):
-            with st.spinner("A IA está criando o texto para o imóvel..."):
-                desc_ia = gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor)
-                st.session_state['descricao_temp'] = desc_ia
+        payload = {
+            "codigo_imovel": codigo_gerado, "tipo": tipo, "bairro": bairro,
+            "valor_venda": valor, "endereco": endereco,
+            "nome_proprietario": nome_proprietario, "telefone_proprietario": telefone_proprietario,
+            "corretor_captacao": corretor_captacao,
+            "quartos": quartos, "suites": suites,
+            "banheiros": banheiros, "vagas_garagem": vagas,
+            "garagem_coberta": garagem_coberta, "area_gourmet": area_gourmet,
+            "sala": sala, "copa": copa, "cozinha": cozinha,
+            "area_terreno": area_terreno, "area_construida": area_construida,
+            "descricao": descricao, "fotos_urls": urls_fotos, "status": "Disponível"
+        }
+        
+        imoveis_existentes = carregar_imoveis()
+        if imoveis_existentes:
+            colunas_existentes = list(imoveis_existentes[0].keys())
+            dados_imovel = {k: v for k, v in payload.items() if k in colunas_existentes}
+        else:
+            dados_imovel = payload
 
-        descricao = st.text_area(
-            "Descrição Geral / Observações", 
-            value=st.session_state.get('descricao_temp', ''),
-            height=150
-        )
-        
-        fotos = st.file_uploader("📷 Fotos do Imóvel", type=["jpg", "png", "jpeg"], accept_multiple_files=True)
-        
-        submitted = st.form_submit_button("💾 Salvar Imóvel", use_container_width=True, type="primary")
-        
-        if submitted:
-            urls_fotos = []
-            if fotos:
-                for foto in fotos:
-                    caminho_storage = f"imoveis/{codigo_gerado}_{foto.name}"
-                    res = supabase.storage.from_("fotos-imoveis").upload(caminho_storage, foto.getvalue(), {"content-type": foto.type})
-                    url_publica = supabase.storage.from_("fotos-imoveis").get_public_url(caminho_storage)
-                    urls_fotos.append(url_publica)
-            
-            payload = {
-                "codigo_imovel": codigo_gerado, "tipo": tipo, "bairro": bairro,
-                "valor_venda": valor, "endereco": endereco,
-                "nome_proprietario": nome_proprietario, "telefone_proprietario": telefone_proprietario,
-                "corretor_captacao": corretor_captacao,
-                "quartos": quartos, "suites": suites,
-                "banheiros": banheiros, "vagas_garagem": vagas,
-                "garagem_coberta": garagem_coberta, "area_gourmet": area_gourmet,
-                "sala": sala, "copa": copa, "cozinha": cozinha,
-                "area_terreno": area_terreno, "area_construida": area_construida,
-                "descricao": descricao, "fotos_urls": urls_fotos, "status": "Disponível"
-            }
-            
-            imoveis_existentes = carregar_imoveis()
-            if imoveis_existentes:
-                colunas_existentes = list(imoveis_existentes[0].keys())
-                dados_imovel = {k: v for k, v in payload.items() if k in colunas_existentes}
-            else:
-                dados_imovel = payload
-
-            try:
-                supabase.table("imoveis").insert(dados_imovel).execute()
-                st.success(f"✅ Imóvel **{codigo_gerado}** cadastrado com sucesso!")
-                if 'descricao_temp' in st.session_state:
-                    del st.session_state['descricao_temp']
-                st.rerun()
-            except Exception as err:
-                st.error(f"Erro ao salvar imóvel: {err}")
+        try:
+            supabase.table("imoveis").insert(dados_imovel).execute()
+            st.success(f"✅ Imóvel **{codigo_gerado}** cadastrado com sucesso!")
+            if 'descricao_temp' in st.session_state:
+                del st.session_state['descricao_temp']
+            st.rerun()
+        except Exception as err:
+            st.error(f"Erro ao salvar imóvel: {err}")
 
 # ==========================================
 # 👤 ABA 4: NOVO LEAD
