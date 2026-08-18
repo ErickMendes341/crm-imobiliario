@@ -139,24 +139,27 @@ def gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor):
 
 # --- FUNÇÕES DE DADOS ---
 def carregar_imoveis():
-    res = supabase.table("imoveis").select("*").execute()
-    return res.data if res.data else []
+    try:
+        res = supabase.table("imoveis").select("*").execute()
+        return res.data if res.data else []
+    except Exception as e:
+        st.error(f"Erro ao carregar imóveis: {e}")
+        return []
 
 def carregar_leads():
-    res = supabase.table("leads").select("*").execute()
-    return res.data if res.data else []
+    try:
+        res = supabase.table("leads").select("*").execute()
+        return res.data if res.data else []
+    except Exception as e:
+        st.error(f"Erro ao carregar leads: {e}")
+        return []
 
 def carregar_visitas():
     try:
         res = supabase.table("visitas").select("*").execute()
         return res.data if res.data else []
-    except Exception:
+    except Exception as e:
         return []
-
-def gerar_codigo_imovel_auto():
-    imoveis = carregar_imoveis()
-    proximo_num = len(imoveis) + 1
-    return f"MS-{proximo_num:03d}"
 
 # --- ESTILIZAÇÃO CSS PERSONALIZADA MENDES & SOARES ---
 st.markdown(f"""
