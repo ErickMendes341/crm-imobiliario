@@ -3,6 +3,14 @@ from supabase import create_client
 import urllib.parse
 import os
 from datetime import date, datetime
+from io import BytesIO
+
+# --- NOVAS IMPORTAÇÕES PARA PDF E IA ---
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from google import genai
 
 # ==========================================
 # 🎨 PALETA DE CORES MENDES & SOARES
@@ -41,14 +49,93 @@ BAIRROS_PASSOS = sorted([
 ])
 
 # --- CONEXÃO SUPABASE ---
-SUPABASE_URL = "https://dsnamhmffvjxcfqtlzet.supabase.co"
-SUPABASE_KEY = "sb_publishable_XVO9PLxpxWBnr32_UYt_UA_HSdspi16"
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://dsnamhmffvjxcfqtlzet.supabase.co")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "sb_publishable_XVO9PLxpxWBnr32_UYt_UA_HSdspi16")
 
 @st.cache_resource
 def init_supabase():
     return create_client(SUPABASE_URL, SUPABASE_KEY)
 
 supabase = init_supabase()
+
+# --- FUNÇÃO DE GERAÇÃO DE PDF DE VENDAS ---
+def gerar_pdf_imovel(imovel):
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+    story = []
+    styles = getSampleStyleSheet()
+
+    title_style = ParagraphStyle(
+        'TitleStyle',
+        parent=styles['Heading1'],
+        fontSize=18,
+        textColor=colors.HexColor(COR_DOURADO),
+        spaceAfter=10
+    )
+
+    story.append(Paragraph(f"<b>{imovel.get('tipo', 'Imóvel')} - {imovel.get('bairro', '')}</b>", title_style))
+    story.append(Paragraph(f"Código: {imovel.get('codigo_imovel', 'N/A')} | Valor: R$ {float(imovel.get('valor_venda', 0)):,.2f}", styles['Heading2']))
+    story.append(Spacer(1, 15))
+
+    dados_tabela = [
+        ["Quartos", "Suítes", "Banheiros", "Vagas"],
+        [str(imovel.get('quartos', 0)), str(imovel.get('suites', 0)), str(imovel.get('banheiros', 0)), str(imovel.get('vagas_garagem', 0))]
+    ]
+    t = Table(dados_tabela, colWidths=[100, 100, 100, 100])
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor(COR_AZUL_MARINHO)),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('BOTTOMPADDING', (0,0), (-1,0), 8),
+        ('BACKGROUND', (0,1), (-1,1), colors.HexColor("#F5F5F5")),
+        ('GRID', (0,0), (-1,-1), 1, colors.HexColor("#DDDDDD"))
+    ]))
+    story.append(t)
+    story.append(Spacer(1, 15))
+
+    story.append(Paragraph("<b>Descrição do Imóvel:</b>", styles['Heading3']))
+    story.append(Paragraph(imovel.get('descricao', 'Sem descrição cadastrada.'), styles['Normal']))
+    story.append(Spacer(1, 15))
+
+    story.append(Paragraph("<b>Mendes & Soares Engenharia e Imóveis</b>", styles['Normal']))
+    tel_contato = imovel.get('telefone_proprietario') or '(35) 9 9810-2465'
+    story.append(Paragraph(f"Contato: {tel_contato}", styles['Normal']))
+
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
+
+# --- FUNÇÃO DE GERAÇÃO DE DESCRIÇÃO COM IA (GEMINI) ---
+def gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor):
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        return "Erro: A chave 'GEMINI_API_KEY' não foi encontrada nas configurações do servidor."
+    
+    try:
+        client = genai.Client(api_key=api_key)
+        prompt = f"""
+        Você é um copywriter especialista no mercado imobiliário da Mendes & Soares Engenharia e Imóveis.
+        Escreva uma descrição comercial altamente atraente e persuasiva para o seguinte imóvel:
+        - Tipo: {tipo}
+        - Bairro: {bairro} (Passos-MG)
+        - Quartos: {quartos} (sendo {suites} suítes)
+        - Vagas de Garagem: {vagas}
+        - Valor: R$ {valor:,.2f}
+
+        Diretrizes:
+        1. Crie um título forte no início.
+        2. Destaque o conforto, a localização e os diferenciais.
+        3. Use parágrafos curtos e emojis adequados.
+        4. Mantenha um tom profissional, elegante e acolhedor.
+        5. Termine convidando o cliente para agendar uma visita com a equipe da Mendes & Soares.
+        """
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt,
+        )
+        return response.text
+    except Exception as e:
+        return f"Erro ao gerar descrição com IA: {str(e)}"
 
 # --- FUNÇÕES DE DADOS ---
 def carregar_imoveis():
@@ -336,6 +423,16 @@ elif menu == "📋 Imóveis Cadastrados":
                     
                     st.write(f"📝 {imovel.get('descricao', 'Sem descrição.')}")
                     
+                    # --- NOVO: BOTÃO DE DOWNLOAD DO PDF DE VENDAS ---
+                    pdf_imovel = gerar_pdf_imovel(imovel)
+                    st.download_button(
+                        label="📄 Baixar PDF de Vendas",
+                        data=pdf_imovel,
+                        file_name=f"imovel_{imovel.get('codigo_imovel', 'ficha')}.pdf",
+                        mime="application/pdf",
+                        key=f"btn_pdf_cat_{imovel_id}"
+                    )
+                    
                     c_status, c_actions = st.columns([2, 1])
                     with c_status:
                         novo_status = st.radio(
@@ -490,7 +587,20 @@ elif menu == "📝 Novo Imóvel":
             area_gourmet = st.checkbox("🍖 Área Gourmet / Churrasqueira")
 
         st.divider()
-        descricao = st.text_area("📝 Descrição Geral / Observações")
+        
+        # --- NOVO: GERADOR DE DESCRIÇÃO POR IA ---
+        st.subheader("📝 Descrição do Imóvel")
+        if st.form_submit_button("✨ Gerar Descrição com IA"):
+            with st.spinner("A IA está criando o texto para o imóvel..."):
+                desc_ia = gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor)
+                st.session_state['descricao_temp'] = desc_ia
+
+        descricao = st.text_area(
+            "Descrição Geral / Observações", 
+            value=st.session_state.get('descricao_temp', ''),
+            height=150
+        )
+        
         fotos = st.file_uploader("📷 Fotos do Imóvel", type=["jpg", "png", "jpeg"], accept_multiple_files=True)
         
         submitted = st.form_submit_button("💾 Salvar Imóvel", use_container_width=True, type="primary")
@@ -527,6 +637,8 @@ elif menu == "📝 Novo Imóvel":
             try:
                 supabase.table("imoveis").insert(dados_imovel).execute()
                 st.success(f"✅ Imóvel **{codigo_gerado}** cadastrado com sucesso!")
+                if 'descricao_temp' in st.session_state:
+                    del st.session_state['descricao_temp']
                 st.rerun()
             except Exception as err:
                 st.error(f"Erro ao salvar imóvel: {err}")
@@ -557,7 +669,6 @@ elif menu == "👤 Novo Lead":
             if not nome or not bairros_interesse:
                 st.error("Por favor, preencha o Nome e escolha ao menos um Bairro de interesse.")
             else:
-                # Trata bairros para string se a coluna for do tipo text no banco
                 bairros_valor = ", ".join(bairros_interesse) if isinstance(bairros_interesse, list) else bairros_interesse
 
                 payload_lead = {
@@ -750,6 +861,16 @@ elif menu == "🎯 Encontrar Matches":
                             msg_wa = f"Olá {lead_sel.get('nome')}! Encontrei este imóvel perfeito para você: {match.get('tipo')} no bairro {match.get('bairro')} por R$ {match.get('valor_venda', 0):,.2f}. Código: {match.get('codigo_imovel')}."
                             url_wa = f"https://wa.me/{str(lead_sel.get('whatsapp')).replace('+', '').replace(' ', '').replace('-', '')}?text={urllib.parse.quote(msg_wa)}"
                             st.markdown(f'<a href="{url_wa}" target="_blank" style="text-decoration:none;"><button style="width:100%; padding:10px; background-color:#25D366; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">📱 Enviar WhatsApp</button></a>', unsafe_allow_html=True)
+                            
+                            # --- NOVO: BOTÃO DE PDF NO CARD DO MATCH ---
+                            pdf_match = gerar_pdf_imovel(match)
+                            st.download_button(
+                                label="📄 Baixar PDF de Vendas",
+                                data=pdf_match,
+                                file_name=f"imovel_{match.get('codigo_imovel', 'ficha')}.pdf",
+                                mime="application/pdf",
+                                key=f"btn_pdf_match_{match.get('id')}"
+                            )
                         st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
@@ -822,4 +943,3 @@ elif menu == "📅 Visitas Agendadas":
                         except Exception as err:
                             st.error(f"Erro ao remover: {err}")
                 st.markdown('</div>', unsafe_allow_html=True)
-            
