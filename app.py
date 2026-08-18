@@ -5,7 +5,6 @@ import os
 from datetime import date, datetime
 from io import BytesIO
 import requests
-from PIL import Image as PILImage
 
 # --- NOVAS IMPORTAÇÕES PARA PDF E IA ---
 from reportlab.lib.pagesizes import letter
@@ -60,7 +59,7 @@ def init_supabase():
 
 supabase = init_supabase()
 
-# --- FUNÇÃO DE GERAÇÃO DE PDF DE VENDAS (COM SUPORTE A FOTOS) ---
+# --- FUNÇÃO DE GERAÇÃO DE PDF DE VENDAS (COM FOTOS) ---
 def gerar_pdf_imovel(imovel):
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
@@ -79,7 +78,6 @@ def gerar_pdf_imovel(imovel):
     story.append(Paragraph(f"Código: {imovel.get('codigo_imovel', 'N/A')} | Valor: R$ {float(imovel.get('valor_venda', 0)):,.2f}", styles['Heading2']))
     story.append(Spacer(1, 10))
 
-    # Adicionar Foto Principal no PDF se houver
     fotos_urls = imovel.get("fotos_urls") or []
     if fotos_urls and len(fotos_urls) > 0:
         try:
@@ -90,7 +88,7 @@ def gerar_pdf_imovel(imovel):
                 story.append(img)
                 story.append(Spacer(1, 15))
         except Exception:
-            pass  # Caso haja erro no download da foto, segue sem interromper o PDF
+            pass
 
     dados_tabela = [
         ["Quartos", "Suítes", "Banheiros", "Vagas"],
@@ -120,55 +118,47 @@ def gerar_pdf_imovel(imovel):
     buffer.seek(0)
     return buffer
 
-# --- FUNÇÃO DE GERAÇÃO DE DESCRIÇÃO COM IA (GEMINI) ---
+# --- FUNÇÃO DE GERAÇÃO DE DESCRIÇÃO COM IA (GEMINI MULTI-MODELO) ---
 def gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor):
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         return "Erro: A chave 'GEMINI_API_KEY' não foi encontrada nas configurações do servidor."
     
-    try:
-        client = genai.Client(api_key=api_key)
-        prompt = f"""
-        Você é um copywriter especialista no mercado imobiliário da Mendes & Soares Engenharia e Imóveis.
-        Escreva uma descrição comercial altamente atraente e persuasiva para o seguinte imóvel:
-        - Tipo: {tipo}
-        - Bairro: {bairro} (Passos-MG)
-        - Quartos: {quartos} (sendo {suites} suítes)
-        - Vagas de Garagem: {vagas}
-        - Valor: R$ {valor:,.2f}
+    prompt = f"""
+    Você é um copywriter especialista no mercado imobiliário da Mendes & Soares Engenharia e Imóveis.
+    Escreva uma descrição comercial altamente atraente e persuasiva para o seguinte imóvel:
+    - Tipo: {tipo}
+    - Bairro: {bairro} (Passos-MG)
+    - Quartos: {quartos} (sendo {suites} suítes)
+    - Vagas de Garagem: {vagas}
+    - Valor: R$ {valor:,.2f}
 
-        Diretrizes:
-        1. Crie um título forte no início.
-        2. Destaque o conforto, a localização e os diferenciais.
-        3. Use parágrafos curtos e emojis adequados.
-        4. Mantenha um tom profissional, elegante e acolhedor.
-        5. Termine convidando o cliente para agendar uma visita com a equipe da Mendes & Soares.
-        """
-        
-        # Modelo ajustado para o identificador padrão da nova SDK da Google
-        response = client.models.generate_content(
-            model='gemini-2.0-flash',
-            contents=prompt,
-        )
-        return response.text
-    except Exception as e:
-        return f"Erro ao gerar descrição com IA: {str(e)}"
+    Diretrizes:
+    1. Crie um título forte no início.
+    2. Destaque o conforto, a localização e os diferenciais.
+    3. Use parágrafos curtos e emojis adequados.
+    4. Mantenha um tom profissional, elegante e acolhedor.
+    5. Termine convidando o cliente para agendar uma visita com a equipe da Mendes & Soares.
+    """
+    
+    # Lista de modelos em ordem de preferência
+    modelos_para_testar = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']
+    
+    client = genai.Client(api_key=api_key)
+    
+    for modelo in modelos_para_testar:
+        try:
+            response = client.models.generate_content(
+                model=modelo,
+                contents=prompt,
+            )
+            if response and response.text:
+                return response.text
+        except Exception:
+            continue
+            
+    return "Erro ao gerar descrição com IA: Não foi possível conectar aos modelos Gemini. Verifique a API Key."
 
-        Diretrizes:
-        1. Crie um título forte no início.
-        2. Destaque o conforto, a localização e os diferenciais.
-        3. Use parágrafos curtos e emojis adequados.
-        4. Mantenha um tom profissional, elegante e acolhedor.
-        5. Termine convidando o cliente para agendar uma visita com a equipe da Mendes & Soares.
-        """
-        # Modelo atualizado para gemini-1.5-flash
-        response = client.models.generate_content(
-            model='gemini-1.5-flash',
-            contents=prompt,
-        )
-        return response.text
-    except Exception as e:
-        return f"Erro ao gerar descrição com IA: {str(e)}"
 # --- FUNÇÕES DE DADOS ---
 def carregar_imoveis():
     try:
@@ -193,7 +183,7 @@ def carregar_visitas():
     except Exception as e:
         return []
 
-# --- FUNÇÃO DE GERAÇÃO AUTOMÁTICA DE CÓDIGO ---
+# --- GERAÇÃO AUTOMÁTICA DE CÓDIGO ---
 def gerar_codigo_imovel_auto():
     imoveis = carregar_imoveis()
     if not imoveis:
@@ -290,7 +280,7 @@ imoveis_data = carregar_imoveis()
 leads_data = carregar_leads()
 visitas_data = carregar_visitas()
 
-# --- MENU LATERAL COM A LOGO MENDES & SOARES ---
+# --- MENU LATERAL ---
 with st.sidebar:
     if os.path.exists("logo.png"):
         st.image("logo.png", use_container_width=True)
