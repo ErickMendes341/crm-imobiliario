@@ -115,7 +115,7 @@ def gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor):
         client = genai.Client(api_key=api_key)
         prompt = f"""
         Você é um copywriter especialista no mercado imobiliário da Mendes & Soares Engenharia e Imóveis.
-        Escreva uma descrição comercial altamente atraente e persuasiva para o seguinte imóvel:
+        Escreva uma descrição comercial highly atraente e persuasiva para o seguinte imóvel:
         - Tipo: {tipo}
         - Bairro: {bairro} (Passos-MG)
         - Quartos: {quartos} (sendo {suites} suítes)
@@ -160,6 +160,24 @@ def carregar_visitas():
         return res.data if res.data else []
     except Exception as e:
         return []
+
+# --- FUNÇÃO DE GERAÇÃO AUTOMÁTICA DE CÓDIGO ---
+def gerar_codigo_imovel_auto():
+    imoveis = carregar_imoveis()
+    if not imoveis:
+        return "MS-001"
+    
+    numeros = []
+    for item in imoveis:
+        cod = item.get("codigo_imovel", "")
+        if cod and ("-" in cod):
+            try:
+                numeros.append(int(cod.split("-")[1]))
+            except ValueError:
+                pass
+                
+    proximo = max(numeros) + 1 if numeros else 1
+    return f"MS-{proximo:03d}"
 
 # --- ESTILIZAÇÃO CSS PERSONALIZADA MENDES & SOARES ---
 st.markdown(f"""
@@ -426,7 +444,6 @@ elif menu == "📋 Imóveis Cadastrados":
                     
                     st.write(f"📝 {imovel.get('descricao', 'Sem descrição.')}")
                     
-                    # --- NOVO: BOTÃO DE DOWNLOAD DO PDF DE VENDAS ---
                     pdf_imovel = gerar_pdf_imovel(imovel)
                     st.download_button(
                         label="📄 Baixar PDF de Vendas",
@@ -450,7 +467,6 @@ elif menu == "📋 Imóveis Cadastrados":
                             st.success(f"Status atualizado para: **{novo_status}**!")
                             st.rerun()
 
-                # --- EXCLUIR IMÓVEL ---
                 with st.expander(f"🗑️ Excluir Imóvel {imovel.get('codigo_imovel')}"):
                     st.warning("⚠️ Esta ação é permanente e removerá o imóvel da base de dados.")
                     confirma_excluir = st.checkbox("Confirmar exclusão deste imóvel", key=f"chk_del_{imovel_id}")
@@ -460,7 +476,6 @@ elif menu == "📋 Imóveis Cadastrados":
                             st.success(f"Imóvel **{imovel.get('codigo_imovel')}** removido com sucesso!")
                             st.rerun()
 
-                # --- EDITAR IMÓVEL ---
                 with st.expander(f"✏️ Editar imóvel {imovel.get('codigo_imovel')}"):
                     with st.form(key=f"form_edit_imovel_{imovel_id}"):
                         e_c1, e_c2, e_c3 = st.columns(3)
@@ -591,7 +606,6 @@ elif menu == "📝 Novo Imóvel":
 
         st.divider()
         
-        # --- NOVO: GERADOR DE DESCRIÇÃO POR IA ---
         st.subheader("📝 Descrição do Imóvel")
         if st.form_submit_button("✨ Gerar Descrição com IA"):
             with st.spinner("A IA está criando o texto para o imóvel..."):
@@ -865,7 +879,6 @@ elif menu == "🎯 Encontrar Matches":
                             url_wa = f"https://wa.me/{str(lead_sel.get('whatsapp')).replace('+', '').replace(' ', '').replace('-', '')}?text={urllib.parse.quote(msg_wa)}"
                             st.markdown(f'<a href="{url_wa}" target="_blank" style="text-decoration:none;"><button style="width:100%; padding:10px; background-color:#25D366; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">📱 Enviar WhatsApp</button></a>', unsafe_allow_html=True)
                             
-                            # --- NOVO: BOTÃO DE PDF NO CARD DO MATCH ---
                             pdf_match = gerar_pdf_imovel(match)
                             st.download_button(
                                 label="📄 Baixar PDF de Vendas",
