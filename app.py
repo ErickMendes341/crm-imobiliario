@@ -144,6 +144,23 @@ def gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor):
         4. Mantenha um tom profissional, elegante e acolhedor.
         5. Termine convidando o cliente para agendar uma visita com a equipe da Mendes & Soares.
         """
+        
+        # Modelo ajustado para o identificador padrão da nova SDK da Google
+        response = client.models.generate_content(
+            model='gemini-2.0-flash',
+            contents=prompt,
+        )
+        return response.text
+    except Exception as e:
+        return f"Erro ao gerar descrição com IA: {str(e)}"
+
+        Diretrizes:
+        1. Crie um título forte no início.
+        2. Destaque o conforto, a localização e os diferenciais.
+        3. Use parágrafos curtos e emojis adequados.
+        4. Mantenha um tom profissional, elegante e acolhedor.
+        5. Termine convidando o cliente para agendar uma visita com a equipe da Mendes & Soares.
+        """
         # Modelo atualizado para gemini-1.5-flash
         response = client.models.generate_content(
             model='gemini-1.5-flash',
