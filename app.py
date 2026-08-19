@@ -118,10 +118,6 @@ def gerar_pdf_imovel(imovel):
     buffer.seek(0)
     return buffer
 
-import os
-import streamlit as st
-from google import genai
-
 # --- FUNÇÃO DE GERAÇÃO DE DESCRIÇÃO COM IA (GEMINI 3.6 FLASH) ---
 def gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor):
     try:
@@ -183,6 +179,13 @@ def carregar_visitas():
     except Exception as e:
         return []
 
+def carregar_interacoes(lead_id):
+    try:
+        res = supabase.table("interacoes_leads").select("*").eq("lead_id", lead_id).order("data_hora", desc=True).execute()
+        return res.data if res.data else []
+    except Exception:
+        return []
+
 # --- GERAÇÃO AUTOMÁTICA DE CÓDIGO ---
 def gerar_codigo_imovel_auto():
     imoveis = carregar_imoveis()
@@ -201,7 +204,7 @@ def gerar_codigo_imovel_auto():
     proximo = max(numeros) + 1 if numeros else 1
     return f"MS-{proximo:03d}"
 
-# --- ESTILIZAÇÃO CSS PERSONALIZADA MENDES & SOARES ---
+# --- ESTILIZAÇÃO CSS PERSONALIZADA MENDES & SOARES + OTIMIZAÇÃO MOBILE ---
 st.markdown(f"""
     <style>
     .stApp {{
@@ -220,9 +223,9 @@ st.markdown(f"""
     .stCard {{
         background-color: {COR_CARD};
         border-radius: 12px;
-        padding: 24px;
+        padding: 16px;
         box-shadow: 0 4px 15px rgba(24, 30, 41, 0.06);
-        margin-bottom: 24px;
+        margin-bottom: 16px;
         border-left: 6px solid {COR_DOURADO};
         border-top: 1px solid #e2e8f0;
         border-right: 1px solid #e2e8f0;
@@ -236,10 +239,10 @@ st.markdown(f"""
     .price-badge {{
         background: linear-gradient(135deg, {COR_DOURADO}, {COR_DOURADO_HOVER});
         color: #ffffff;
-        padding: 8px 18px;
+        padding: 6px 14px;
         border-radius: 20px;
         font-weight: 700;
-        font-size: 1.1em;
+        font-size: 1.0em;
         display: inline-block;
         text-align: center;
         box-shadow: 0 2px 6px rgba(197, 155, 39, 0.3);
@@ -247,13 +250,13 @@ st.markdown(f"""
     .feature-tag {{
         background-color: #f1f5f9;
         color: {COR_AZUL_MARINHO};
-        padding: 5px 12px;
+        padding: 4px 10px;
         border-radius: 6px;
-        font-size: 0.85em;
+        font-size: 0.8em;
         font-weight: 600;
-        margin-right: 6px;
+        margin-right: 4px;
         display: inline-block;
-        margin-bottom: 6px;
+        margin-bottom: 4px;
         border: 1px solid #cbd5e1;
     }}
     div.stButton > button[kind="primary"] {{
@@ -271,6 +274,21 @@ st.markdown(f"""
     h1, h2, h3 {{
         color: {COR_AZUL_MARINHO} !important;
         font-weight: 700 !important;
+    }}
+    
+    /* OTIMIZAÇÃO PARA CELULAR (RESPONSIVIDADE) */
+    @media (max-width: 768px) {{
+        .stCard {{
+            padding: 12px !important;
+            margin-bottom: 12px !important;
+        }}
+        div.stButton > button {{
+            width: 100% !important;
+        }}
+        .price-badge {{
+            width: 100% !important;
+            margin-top: 6px !important;
+        }}
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -485,6 +503,7 @@ elif menu == "📋 Imóveis Cadastrados":
                             st.success(f"Imóvel **{imovel.get('codigo_imovel')}** removido com sucesso!")
                             st.rerun()
 
+                # --- SANFONA DE EDIÇÃO COM GERADOR DE IA ---
                 with st.expander(f"✏️ Editar imóvel {imovel.get('codigo_imovel')}"):
                     with st.form(key=f"form_edit_imovel_{imovel_id}"):
                         e_c1, e_c2, e_c3 = st.columns(3)
@@ -523,7 +542,26 @@ elif menu == "📋 Imóveis Cadastrados":
                             e_garagem_coberta = st.checkbox("🚘 Garagem Coberta", value=bool(imovel.get('garagem_coberta', False)), key=f"e_gc_{imovel_id}")
                             e_area_gourmet = st.checkbox("🍖 Área Gourmet", value=bool(imovel.get('area_gourmet', False)), key=f"e_ag_{imovel_id}")
 
-                        e_descricao = st.text_area("Descrição", value=imovel.get('descricao', ''), key=f"e_desc_{imovel_id}")
+                        st.divider()
+                        
+                        btn_ia_edit = st.form_submit_button("✨ Gerar/Recalcular Descrição com IA", type="secondary")
+                        
+                        desc_padrao = imovel.get('descricao', '')
+                        if btn_ia_edit:
+                            with st.spinner("Gerando nova descrição com IA..."):
+                                nova_desc = gerar_descricao_ia(
+                                    tipo=e_tipo,
+                                    bairro=e_bairro,
+                                    quartos=e_quartos,
+                                    suites=e_suites,
+                                    vagas=e_vagas,
+                                    valor=e_valor
+                                )
+                                st.session_state[f"temp_desc_edit_{imovel_id}"] = nova_desc
+
+                        val_desc_final = st.session_state.get(f"temp_desc_edit_{imovel_id}", desc_padrao)
+
+                        e_descricao = st.text_area("Descrição do Imóvel", value=val_desc_final, height=150, key=f"e_desc_{imovel_id}")
                         
                         btn_salvar_edicao = st.form_submit_button("💾 Salvar Alterações", use_container_width=True, type="primary")
                         if btn_salvar_edicao:
@@ -554,6 +592,8 @@ elif menu == "📋 Imóveis Cadastrados":
                             
                             try:
                                 supabase.table("imoveis").update(dados_atualizados).eq("id", imovel_id).execute()
+                                if f"temp_desc_edit_{imovel_id}" in st.session_state:
+                                    del st.session_state[f"temp_desc_edit_{imovel_id}"]
                                 st.success("✅ Imóvel atualizado com sucesso!")
                                 st.rerun()
                             except Exception as err:
@@ -721,11 +761,11 @@ elif menu == "👤 Novo Lead":
                     st.error(f"Erro ao salvar lead: {err}")
 
 # ==========================================
-# 👥 ABA 5: GERENCIAR LEADS
+# 👥 ABA 5: GERENCIAR LEADS + HISTÓRICO DE INTERAÇÕES
 # ==========================================
 elif menu == "👥 Gerenciar Leads":
     st.title("👥 Gerenciamento de Leads")
-    st.write("Gerencie e atualize o perfil de busca dos clientes.")
+    st.write("Gerencie o perfil de busca e acompanhe todo o histórico de interações.")
     
     with st.expander("🔍 **Filtros e Busca de Leads**", expanded=True):
         fl_col1, fl_col2, fl_col3 = st.columns([2, 1.5, 2.5])
@@ -781,6 +821,44 @@ elif menu == "👥 Gerenciar Leads":
                         supabase.table("leads").update({"status": novo_status_lead}).eq("id", lead_id).execute()
                         st.success("Status atualizado!")
                         st.rerun()
+
+                # --- HISTÓRICO DE INTERAÇÕES COM O CLIENTE ---
+                with st.expander("💬 Histórico de Atendimentos / Interações"):
+                    st.write("**Registrar novo contato:**")
+                    with st.form(key=f"form_interacao_{lead_id}"):
+                        c_i1, c_i2 = st.columns([1, 2])
+                        with c_i1:
+                            corretor_int = st.selectbox("Corretor", CORRETORES, key=f"c_int_{lead_id}")
+                        with c_i2:
+                            nota_int = st.text_input("Resumo da conversa / Feedback", placeholder="Ex: Enviei opções pelo WhatsApp, cliente gostou do imóvel MS-002 e quer agendar visita.", key=f"n_int_{lead_id}")
+                        
+                        btn_salvar_int = st.form_submit_button("💬 Registrar Interação", type="secondary")
+                        if btn_salvar_int:
+                            if not nota_int:
+                                st.error("Escreva um resumo da interação.")
+                            else:
+                                payload_int = {
+                                    "lead_id": lead_id,
+                                    "corretor": corretor_int,
+                                    "mensagem": nota_int,
+                                    "data_hora": datetime.now().strftime("%d/%m/%Y %H:%M")
+                                }
+                                try:
+                                    supabase.table("interacoes_leads").insert(payload_int).execute()
+                                    st.success("Interação registrada com sucesso!")
+                                    st.rerun()
+                                except Exception as err:
+                                    st.error(f"Erro ao salvar interação: {err}")
+
+                    # Lista interações registradas
+                    historico = carregar_interacoes(lead_id)
+                    if historico:
+                        st.divider()
+                        st.write("**Histórico de Conversas:**")
+                        for h in historico:
+                            st.caption(f"🕒 **{h.get('data_hora', '')}** — **{h.get('corretor', 'Corretor')}**: {h.get('mensagem', '')}")
+                    else:
+                        st.caption("Nenhuma interação registrada para este cliente ainda.")
 
                 col_edit, col_del = st.columns(2)
                 with col_edit:
