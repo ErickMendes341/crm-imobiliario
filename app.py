@@ -749,57 +749,93 @@ elif menu == "📝 Novo Imóvel":
 # ==========================================
 # 👤 ABA 4: NOVO LEAD
 # ==========================================
-elif menu == "👤 Novo Lead":
-    st.title("👤 Cadastrar Novo Lead")
-    st.write("Cadastre novos clientes interessados em comprar imóveis.")
+elif menu == "➕ Novo Lead":
+    st.title("➕ Cadastrar Novo Lead")
+    st.write("Preencha as preferências e dados do cliente para salvar no sistema.")
     st.divider()
 
-    with st.form("form_lead", clear_on_submit=True):
+    with st.form("form_novo_lead", clear_on_submit=True):
         col1, col2 = st.columns(2)
+
         with col1:
-            nome = st.text_input("Nome Completo do Cliente *")
-            whatsapp = st.text_input("WhatsApp com DDD *", "+5535998102465")
-            corretor_lead = st.selectbox("Corretor Responsável *", CORRETORES)
+            nome = st.text_input("Nome do Cliente *", placeholder="Ex: João Silva")
+            whatsapp = st.text_input("WhatsApp / Telefone *", placeholder="Ex: 35999998888")
+            email = st.text_input("E-mail", placeholder="Ex: joao@email.com")
+            
+            tipo_imovel = st.multiselect(
+                "Tipo de Imóvel Preferido",
+                options=["Casa", "Apartamento", "Terreno", "Chácara"],
+                default=["Casa"]
+            )
+
         with col2:
-            bairros_interesse = st.multiselect("Bairros de Interesse (Passos-MG) *", BAIRROS_PASSOS, default=["Centro"])
-            orcamento = st.number_input("Orçamento Máximo (R$) *", min_value=0.0, value=500000.0, step=10000.0)
-            status_inicial = st.selectbox("Status Inicial no Funil", STATUS_LEADS, index=0)
-        
-        st.divider()
-        observacoes = st.text_area("📝 Preferências / O que o cliente procura?", placeholder="Ex: Procura casa térrea, com quintal grande, suite com closet e piscina. Aceita financiamento.")
+            num_quartos = st.number_input("Número Mínimo de Quartos", min_value=0, max_value=10, value=2, step=1)
+            
+            orcamento = st.number_input(
+                "Orçamento Máximo (R$)", 
+                min_value=0.0, 
+                value=300000.0, 
+                step=10000.0, 
+                format="%.2f"
+            )
 
-        submitted_lead = st.form_submit_button("💾 Salvar Lead", use_container_width=True, type="primary")
-        if submitted_lead:
-            if not nome or not bairros_interesse:
-                st.error("Por favor, preencha o Nome e escolha ao menos um Bairro de interesse.")
+            e_financiamento = st.radio(
+                "Pretende fazer Financiamento Bancário?", 
+                options=["Sim", "Não"], 
+                horizontal=True
+            )
+            
+            financiamento_aprovado = "Não se aplica"
+            if e_financiamento == "Sim":
+                financiamento_aprovado = st.radio(
+                    "O Crédito / Financiamento já está Aprovado?", 
+                    options=["Sim", "Não", "Em Análise"], 
+                    horizontal=True
+                )
+
+        bairros_sugeridos = ["Centro", "Jardim América", "Vilagio D' Itália", "Nossa Senhora das Graças"]
+        bairros = st.multiselect("Bairros de Interesse", options=bairros_sugeridos)
+
+        status_inicial = st.selectbox(
+            "Status Inicial no Funil", 
+            options=[
+                "🔵 Novo Lead (Sem Contato)",
+                "🟡 Em Atendimento",
+                "🟡 Visita Agendada",
+                "🟠 Proposta Enviada (Quente)",
+                "🟢 Já comprou (Fechado)",
+                "🔴 Perdido/Inativo"
+            ]
+        )
+
+        observacoes = st.text_area("Observações / Detalhes do Perfil")
+
+        submitted = st.form_submit_button("💾 Salvar Lead", use_container_width=True)
+
+        if submitted:
+            if not nome or not whatsapp:
+                st.error("Por favor, preencha os campos obrigatórios (Nome e WhatsApp).")
             else:
-                bairros_valor = ", ".join(bairros_interesse) if isinstance(bairros_interesse, list) else bairros_interesse
-
-                payload_lead = {
-                    "nome": nome, 
-                    "whatsapp": whatsapp, 
-                    "bairros_interesse": bairros_valor,
-                    "orcamento_maximo": orcamento, 
-                    "orcamento_max": orcamento,
-                    "corretor_responsavel": corretor_lead,
-                    "corretor": corretor_lead, 
-                    "observacoes": observacoes,
-                    "status": status_inicial
-                }
-                
-                if leads_data:
-                    colunas_lead_existentes = list(leads_data[0].keys())
-                    dados_lead = {k: v for k, v in payload_lead.items() if k in colunas_lead_existentes}
-                else:
-                    dados_lead = payload_lead
-
                 try:
-                    supabase.table("leads").insert(dados_lead).execute()
-                    st.success(f"✅ Lead **{nome}** cadastrado com sucesso!")
-                    st.rerun()
-                except Exception as err:
-                    st.error(f"Erro ao salvar lead: {err}")
+                    novo_lead_data = {
+                        "nome": nome,
+                        "whatsapp": whatsapp,
+                        "email": email,
+                        "tipo_imovel": tipo_imovel,  # Salva como Array ou Lista JSON
+                        "quartos_min": int(num_quartos),
+                        "orcamento_maximo": float(orcamento),
+                        "financiamento": e_financiamento,
+                        "financiamento_aprovado": financiamento_aprovado,
+                        "bairros_interesse": bairros,
+                        "status": status_inicial,
+                        "observacoes": observacoes
+                    }
 
+                    supabase.table("leads").insert(novo_lead_data).execute()
+                    st.success(f"Lead **{nome}** cadastrado com sucesso!")
+                    st.toast("Lead registrado!", icon="✅")
+                except Exception as e:
+                    st.error(f"Erro ao cadastrar lead no Supabase: {e}")
 # ==========================================
 # 👥 ABA 5: FUNIL DE LEADS COMPACTO POR ABAS
 # ==========================================
