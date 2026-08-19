@@ -26,6 +26,16 @@ COR_TEXTO = "#101620"          # Texto escuro refinado
 # --- LISTA DE CORRETORES ---
 CORRETORES = ["Erick Mendes", "Pedro Siqueira"]
 
+# --- FUNIL DE VENDAS / STATUS DOS LEADS ---
+STATUS_LEADS = [
+    "Em busca", 
+    "Visita Agendada", 
+    "Proposta Enviada", 
+    "Em Cartório", 
+    "Já comprou", 
+    "Perdido/Inativo"
+]
+
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
     page_title="Mendes & Soares | Engenharia e Imóveis",
@@ -59,7 +69,7 @@ def init_supabase():
 
 supabase = init_supabase()
 
-# --- FUNÇÃO DE GERAÇÃO DE PDF DE VENDAS (COM FOTOS) ---
+# --- FUNÇÃO DE GERAÇÃO DE PDF DE VENDAS ---
 def gerar_pdf_imovel(imovel):
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
@@ -118,7 +128,7 @@ def gerar_pdf_imovel(imovel):
     buffer.seek(0)
     return buffer
 
-# --- FUNÇÃO DE GERAÇÃO DE DESCRIÇÃO COM IA (GEMINI 3.6 FLASH) ---
+# --- FUNÇÃO DE GERAÇÃO DE DESCRIÇÃO COM IA (GEMINI) ---
 def gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor):
     try:
         api_key = st.secrets["GEMINI_API_KEY"]
@@ -126,7 +136,7 @@ def gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor):
         api_key = os.environ.get("GEMINI_API_KEY")
 
     if not api_key:
-        return "Erro: A chave 'GEMINI_API_KEY' não foi encontrada nas Secrets do Streamlit."
+        return "Erro: A chave 'GEMINI_API_KEY' não foi encontrada nas Secrets ou Variáveis de Ambiente."
 
     prompt = f"""
     Você é um copywriter especialista no mercado imobiliário da Mendes & Soares Engenharia e Imóveis.
@@ -155,7 +165,7 @@ def gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor):
     except Exception as e:
         return f"Erro ao comunicar com a API do Gemini: {str(e)}"
 
-# --- FUNÇÕES DE DADOS ---
+# --- FUNÇÕES DE CARREGAMENTO DE DADOS ---
 def carregar_imoveis():
     try:
         res = supabase.table("imoveis").select("*").execute()
@@ -188,7 +198,7 @@ def carregar_interacoes(lead_id):
 
 def calcular_total_matches(imoveis, leads):
     total = 0
-    leads_ativos = [l for l in leads if l.get('status', 'Em busca') == 'Em busca']
+    leads_ativos = [l for l in leads if l.get('status', 'Em busca') not in ['Já comprou', 'Perdido/Inativo']]
     imoveis_disp = [i for i in imoveis if i.get('status', 'Disponível') == 'Disponível']
     
     for l in leads_ativos:
@@ -208,7 +218,6 @@ def calcular_total_matches(imoveis, leads):
                 total += 1
     return total
 
-# --- GERAÇÃO AUTOMÁTICA DE CÓDIGO ---
 def gerar_codigo_imovel_auto():
     imoveis = carregar_imoveis()
     if not imoveis:
@@ -226,7 +235,7 @@ def gerar_codigo_imovel_auto():
     proximo = max(numeros) + 1 if numeros else 1
     return f"MS-{proximo:03d}"
 
-# --- ESTILIZAÇÃO CSS PERSONALIZADA ---
+# --- ESTILIZAÇÃO CSS ---
 st.markdown(f"""
     <style>
     .stApp {{
@@ -297,23 +306,10 @@ st.markdown(f"""
         color: {COR_AZUL_MARINHO} !important;
         font-weight: 700 !important;
     }}
-    @media (max-width: 768px) {{
-        .stCard {{
-            padding: 12px !important;
-            margin-bottom: 12px !important;
-        }}
-        div.stButton > button {{
-            width: 100% !important;
-        }}
-        .price-badge {{
-            width: 100% !important;
-            margin-top: 6px !important;
-        }}
-    }}
     </style>
 """, unsafe_allow_html=True)
 
-# --- CARREGAR DADOS ---
+# --- DADOS ---
 imoveis_data = carregar_imoveis()
 leads_data = carregar_leads()
 visitas_data = carregar_visitas()
@@ -335,7 +331,7 @@ with st.sidebar:
             "📋 Imóveis Cadastrados", 
             "📝 Novo Imóvel", 
             "👤 Novo Lead", 
-            "👥 Gerenciar Leads", 
+            "👥 Funil de Leads", 
             "🎯 Encontrar Matches",
             "📅 Visitas Agendadas"
         ],
@@ -350,27 +346,27 @@ with st.sidebar:
 # ==========================================
 if menu == "📊 Dashboard":
     st.title("📊 Painel Geral — Mendes & Soares")
-    st.write("Métricas operacionais e gestão estratégica em tempo real.")
+    st.write("Métricas operacionais e gestão estratégica do funil de vendas.")
     st.divider()
 
     col1, col2, col3, col4, col5 = st.columns(5)
     
     imoveis_disponiveis = [i for i in imoveis_data if i.get('status', 'Disponível') == 'Disponível']
-    leads_ativos = [l for l in leads_data if l.get('status', 'Em busca') == 'Em busca']
+    leads_em_negociacao = [l for l in leads_data if l.get('status', 'Em busca') not in ['Já comprou', 'Perdido/Inativo']]
     visitas_pendentes = [v for v in visitas_data if v.get('status', 'Agendada') == 'Agendada']
     total_matches = calcular_total_matches(imoveis_data, leads_data)
+    leads_fechados = [l for l in leads_data if l.get('status') == 'Já comprou']
     
     with col1:
         st.metric(label="🏠 Imóveis Disponíveis", value=len(imoveis_disponiveis))
     with col2:
-        st.metric(label="👥 Leads Ativos", value=len(leads_ativos))
+        st.metric(label="👥 Leads em Negociação", value=len(leads_em_negociacao))
     with col3:
-        st.metric(label="🎯 Total de Matches", value=total_matches)
+        st.metric(label="🎯 Matches Ativos", value=total_matches)
     with col4:
         st.metric(label="📅 Visitas Agendadas", value=len(visitas_pendentes))
     with col5:
-        imoveis_vendidos = len(imoveis_data) - len(imoveis_disponiveis)
-        st.metric(label="✅ Imóveis Vendidos", value=imoveis_vendidos)
+        st.metric(label="🎉 Vendas Concluídas", value=len(leads_fechados))
 
 # ==========================================
 # 📋 ABA 2: IMÓVEIS CADASTRADOS
@@ -526,7 +522,7 @@ elif menu == "📋 Imóveis Cadastrados":
                             st.success(f"Imóvel **{imovel.get('codigo_imovel')}** removido com sucesso!")
                             st.rerun()
 
-                # --- SANFONA DE EDIÇÃO COM CORREÇÃO DEFINITIVA DA IA ---
+                # --- SANFONA DE EDIÇÃO COM CORREÇÃO DE ESTADO ---
                 with st.expander(f"✏️ Editar imóvel {imovel.get('codigo_imovel')}"):
                     tipos_list = ["Casa", "Apartamento", "Terreno", "Sobrado", "Cobertura", "Sítio/Chácara"]
                     idx_tipo = tipos_list.index(imovel.get('tipo')) if imovel.get('tipo') in tipos_list else 0
@@ -537,95 +533,101 @@ elif menu == "📋 Imóveis Cadastrados":
                     if key_desc not in st.session_state:
                         st.session_state[key_desc] = imovel.get('descricao', '')
 
-                    e_c1, e_c2, e_c3 = st.columns(3)
-                    with e_c1:
-                        e_tipo = st.selectbox("Tipo de Imóvel", tipos_list, index=idx_tipo, key=f"e_tipo_{imovel_id}")
-                        e_nome_prop = st.text_input("Nome do Proprietário", value=imovel.get('nome_proprietario', ''), key=f"e_np_{imovel_id}")
-                    with e_c2:
-                        e_bairro = st.selectbox("Bairro (Passos-MG)", BAIRROS_PASSOS, index=idx_bairro, key=f"e_bairro_{imovel_id}")
-                        e_tel_prop = st.text_input("Telefone do Proprietário", value=imovel.get('telefone_proprietario', ''), key=f"e_tp_{imovel_id}")
-                        e_valor = st.number_input("Valor de Venda (R$)", min_value=0.0, value=float(imovel.get('valor_venda', 0.0)), step=10000.0, key=f"e_valor_{imovel_id}")
-                    with e_c3:
-                        e_corretor = st.selectbox("Corretor Captação", CORRETORES, index=idx_corretor, key=f"e_corr_{imovel_id}")
-                        e_endereco = st.text_input("Endereço do Imóvel", value=imovel.get('endereco', ''), key=f"e_end_{imovel_id}")
-                        e_area_terreno = st.number_input("Tamanho do Lote (m²)", min_value=0.0, value=float(imovel.get('area_terreno', 0.0) or 0.0), step=10.0, key=f"e_at_{imovel_id}")
-                        e_area_construida = st.number_input("Área Construída (m²)", min_value=0.0, value=float(imovel.get('area_construida', 0.0) or 0.0), step=10.0, key=f"e_ac_{imovel_id}")
+                    # Formulário de edição
+                    with st.form(key=f"form_editar_imovel_{imovel_id}"):
+                        e_c1, e_c2, e_c3 = st.columns(3)
+                        with e_c1:
+                            e_tipo = st.selectbox("Tipo de Imóvel", tipos_list, index=idx_tipo)
+                            e_nome_prop = st.text_input("Nome do Proprietário", value=imovel.get('nome_proprietario', ''))
+                        with e_c2:
+                            e_bairro = st.selectbox("Bairro (Passos-MG)", BAIRROS_PASSOS, index=idx_bairro)
+                            e_tel_prop = st.text_input("Telefone do Proprietário", value=imovel.get('telefone_proprietario', ''))
+                            e_valor = st.number_input("Valor de Venda (R$)", min_value=0.0, value=float(imovel.get('valor_venda', 0.0)), step=10000.0)
+                        with e_c3:
+                            e_corretor = st.selectbox("Corretor Captação", CORRETORES, index=idx_corretor)
+                            e_endereco = st.text_input("Endereço do Imóvel", value=imovel.get('endereco', ''))
+                            e_area_terreno = st.number_input("Tamanho do Lote (m²)", min_value=0.0, value=float(imovel.get('area_terreno', 0.0) or 0.0), step=10.0)
+                            e_area_construida = st.number_input("Área Construída (m²)", min_value=0.0, value=float(imovel.get('area_construida', 0.0) or 0.0), step=10.0)
 
-                    st.divider()
-                    e_cq1, e_cq2, e_cq3, e_cq4 = st.columns(4)
-                    with e_cq1: e_quartos = st.number_input("Dormitórios", min_value=0, value=int(imovel.get('quartos', 0) or 0), step=1, key=f"e_q_{imovel_id}")
-                    with e_cq2: e_suites = st.number_input("Suítes", min_value=0, value=int(imovel.get('suites', 0) or 0), step=1, key=f"e_s_{imovel_id}")
-                    with e_cq3: e_banheiros = st.number_input("Banheiros", min_value=0, value=int(imovel.get('banheiros', 0) or 0), step=1, key=f"e_b_{imovel_id}")
-                    with e_cq4: e_vagas = st.number_input("Vagas Garagem", min_value=0, value=int(imovel.get('vagas_garagem', 0) or 0), step=1, key=f"e_v_{imovel_id}")
+                        st.divider()
+                        e_cq1, e_cq2, e_cq3, e_cq4 = st.columns(4)
+                        with e_cq1: e_quartos = st.number_input("Dormitórios", min_value=0, value=int(imovel.get('quartos', 0) or 0), step=1)
+                        with e_cq2: e_suites = st.number_input("Suítes", min_value=0, value=int(imovel.get('suites', 0) or 0), step=1)
+                        with e_cq3: e_banheiros = st.number_input("Banheiros", min_value=0, value=int(imovel.get('banheiros', 0) or 0), step=1)
+                        with e_cq4: e_vagas = st.number_input("Vagas Garagem", min_value=0, value=int(imovel.get('vagas_garagem', 0) or 0), step=1)
 
-                    st.divider()
-                    e_c5, e_c6 = st.columns(2)
-                    with e_c5:
-                        e_sala = st.checkbox("Sala", value=bool(imovel.get('sala', True)), key=f"e_sala_{imovel_id}")
-                        e_copa = st.checkbox("Copa", value=bool(imovel.get('copa', False)), key=f"e_copa_{imovel_id}")
-                        e_cozinha = st.checkbox("Cozinha", value=bool(imovel.get('cozinha', True)), key=f"e_cozinha_{imovel_id}")
-                    with e_c6:
-                        e_garagem_coberta = st.checkbox("🚘 Garagem Coberta", value=bool(imovel.get('garagem_coberta', False)), key=f"e_gc_{imovel_id}")
-                        e_area_gourmet = st.checkbox("🍖 Área Gourmet", value=bool(imovel.get('area_gourmet', False)), key=f"e_ag_{imovel_id}")
+                        st.divider()
+                        e_c5, e_c6 = st.columns(2)
+                        with e_c5:
+                            e_sala = st.checkbox("Sala", value=bool(imovel.get('sala', True)))
+                            e_copa = st.checkbox("Copa", value=bool(imovel.get('copa', False)))
+                            e_cozinha = st.checkbox("Cozinha", value=bool(imovel.get('cozinha', True)))
+                        with e_c6:
+                            e_garagem_coberta = st.checkbox("🚘 Garagem Coberta", value=bool(imovel.get('garagem_coberta', False)))
+                            e_area_gourmet = st.checkbox("🍖 Área Gourmet", value=bool(imovel.get('area_gourmet', False)))
 
-                    st.divider()
-                    
-                    if st.button("✨ Gerar/Recalcular Descrição com IA", key=f"btn_ia_edit_{imovel_id}"):
-                        with st.spinner("Gerando nova descrição com IA..."):
-                            nova_desc = gerar_descricao_ia(
-                                tipo=st.session_state.get(f"e_tipo_{imovel_id}", e_tipo),
-                                bairro=st.session_state.get(f"e_bairro_{imovel_id}", e_bairro),
-                                quartos=st.session_state.get(f"e_q_{imovel_id}", e_quartos),
-                                suites=st.session_state.get(f"e_s_{imovel_id}", e_suites),
-                                vagas=st.session_state.get(f"e_v_{imovel_id}", e_vagas),
-                                valor=st.session_state.get(f"e_valor_{imovel_id}", e_valor)
-                            )
-                            st.session_state[key_desc] = nova_desc
-                            st.success("Descrição atualizada com IA com sucesso!")
-                            st.rerun()
-
-                    e_descricao = st.text_area(
-                        "Descrição do Imóvel", 
-                        value=st.session_state[key_desc], 
-                        height=150, 
-                        key=f"e_desc_area_{imovel_id}"
-                    )
-                    st.session_state[key_desc] = e_descricao
-
-                    if st.button("💾 Salvar Alterações", key=f"btn_salvar_edit_{imovel_id}", use_container_width=True, type="primary"):
-                        payload = {
-                            "tipo": str(st.session_state.get(f"e_tipo_{imovel_id}", e_tipo)),
-                            "bairro": str(st.session_state.get(f"e_bairro_{imovel_id}", e_bairro)),
-                            "valor_venda": float(st.session_state.get(f"e_valor_{imovel_id}", e_valor)),
-                            "nome_proprietario": str(st.session_state.get(f"e_np_{imovel_id}", e_nome_prop)),
-                            "telefone_proprietario": str(st.session_state.get(f"e_tp_{imovel_id}", e_tel_prop)),
-                            "endereco": str(st.session_state.get(f"e_end_{imovel_id}", e_endereco)),
-                            "corretor_captacao": str(st.session_state.get(f"e_corr_{imovel_id}", e_corretor)),
-                            "quartos": int(st.session_state.get(f"e_q_{imovel_id}", e_quartos)),
-                            "suites": int(st.session_state.get(f"e_s_{imovel_id}", e_suites)),
-                            "banheiros": int(st.session_state.get(f"e_b_{imovel_id}", e_banheiros)),
-                            "vagas_garagem": int(st.session_state.get(f"e_v_{imovel_id}", e_vagas)),
-                            "garagem_coberta": bool(st.session_state.get(f"e_gc_{imovel_id}", e_garagem_coberta)),
-                            "area_gourmet": bool(st.session_state.get(f"e_ag_{imovel_id}", e_area_gourmet)),
-                            "sala": bool(st.session_state.get(f"e_sala_{imovel_id}", e_sala)),
-                            "copa": bool(st.session_state.get(f"e_copa_{imovel_id}", e_copa)),
-                            "cozinha": bool(st.session_state.get(f"e_cozinha_{imovel_id}", e_cozinha)),
-                            "area_terreno": float(st.session_state.get(f"e_at_{imovel_id}", e_area_terreno)),
-                            "area_construida": float(st.session_state.get(f"e_ac_{imovel_id}", e_area_construida)),
-                            "descricao": str(st.session_state[key_desc])
-                        }
+                        st.divider()
                         
-                        colunas_existentes = list(imovel.keys())
-                        dados_atualizados = {k: v for k, v in payload.items() if k in colunas_existentes}
+                        e_descricao = st.text_area(
+                            "Descrição do Imóvel", 
+                            value=st.session_state[key_desc], 
+                            height=150
+                        )
+
+                        c_btn_ia, c_btn_salvar = st.columns([1, 1])
                         
-                        try:
-                            supabase.table("imoveis").update(dados_atualizados).eq("id", imovel_id).execute()
-                            if key_desc in st.session_state:
-                                del st.session_state[key_desc]
-                            st.success("✅ Imóvel atualizado com sucesso!")
-                            st.rerun()
-                        except Exception as err:
-                            st.error(f"Erro ao atualizar no Supabase: {err}")
+                        with c_btn_ia:
+                            btn_ia = st.form_submit_button("✨ Re-gerar Descrição com IA")
+                        with c_btn_salvar:
+                            btn_salvar = st.form_submit_button("💾 Salvar Alterações", type="primary")
+
+                        if btn_ia:
+                            with st.spinner("Gerando nova descrição com IA..."):
+                                nova_desc = gerar_descricao_ia(
+                                    tipo=e_tipo,
+                                    bairro=e_bairro,
+                                    quartos=e_quartos,
+                                    suites=e_suites,
+                                    vagas=e_vagas,
+                                    valor=e_valor
+                                )
+                                st.session_state[key_desc] = nova_desc
+                                st.rerun()
+
+                        if btn_salvar:
+                            payload = {
+                                "tipo": str(e_tipo),
+                                "bairro": str(e_bairro),
+                                "valor_venda": float(e_valor),
+                                "nome_proprietario": str(e_nome_prop),
+                                "telefone_proprietario": str(e_tel_prop),
+                                "endereco": str(e_endereco),
+                                "corretor_captacao": str(e_corretor),
+                                "quartos": int(e_quartos),
+                                "suites": int(e_suites),
+                                "banheiros": int(e_banheiros),
+                                "vagas_garagem": int(e_vagas),
+                                "garagem_coberta": bool(e_garagem_coberta),
+                                "area_gourmet": bool(e_area_gourmet),
+                                "sala": bool(e_sala),
+                                "copa": bool(e_copa),
+                                "cozinha": bool(e_cozinha),
+                                "area_terreno": float(e_area_terreno),
+                                "area_construida": float(e_area_construida),
+                                "descricao": str(e_descricao)
+                            }
+                            
+                            colunas_existentes = list(imovel.keys())
+                            dados_atualizados = {k: v for k, v in payload.items() if k in colunas_existentes}
+                            
+                            try:
+                                supabase.table("imoveis").update(dados_atualizados).eq("id", imovel_id).execute()
+                                if key_desc in st.session_state:
+                                    del st.session_state[key_desc]
+                                st.success("✅ Imóvel atualizado com sucesso!")
+                                st.rerun()
+                            except Exception as err:
+                                st.error(f"Erro ao atualizar no Supabase: {err}")
 
                 st.markdown('</div>', unsafe_allow_html=True)
 
@@ -752,6 +754,7 @@ elif menu == "👤 Novo Lead":
         with col2:
             bairros_interesse = st.multiselect("Bairros de Interesse (Passos-MG) *", BAIRROS_PASSOS, default=["Centro"])
             orcamento = st.number_input("Orçamento Máximo (R$) *", min_value=0.0, value=500000.0, step=10000.0)
+            status_inicial = st.selectbox("Status Inicial no Funil", STATUS_LEADS, index=0)
         
         st.divider()
         observacoes = st.text_area("📝 Preferências / O que o cliente procura?", placeholder="Ex: Procura casa térrea, com quintal grande, suite com closet e piscina. Aceita financiamento.")
@@ -772,7 +775,7 @@ elif menu == "👤 Novo Lead":
                     "corretor_responsavel": corretor_lead,
                     "corretor": corretor_lead, 
                     "observacoes": observacoes,
-                    "status": "Em busca"
+                    "status": status_inicial
                 }
                 
                 if leads_data:
@@ -789,16 +792,16 @@ elif menu == "👤 Novo Lead":
                     st.error(f"Erro ao salvar lead: {err}")
 
 # ==========================================
-# 👥 ABA 5: GERENCIAR LEADS + HISTÓRICO DE INTERAÇÕES
+# 👥 ABA 5: GERENCIAR LEADS + FUNIL DE VENDAS
 # ==========================================
-elif menu == "👥 Gerenciar Leads":
-    st.title("👥 Gerenciamento de Leads")
-    st.write("Gerencie o perfil de busca e acompanhe todo o histórico de interações.")
+elif menu == "👥 Funil de Leads":
+    st.title("👥 Gestão do Funil de Leads")
+    st.write("Acompanhe o status de negociação, histórico de atendimento e atualize o funil de vendas.")
     
-    with st.expander("🔍 **Filtros e Busca de Leads**", expanded=True):
+    with st.expander("🔍 **Filtros e Busca no Funil**", expanded=True):
         fl_col1, fl_col2, fl_col3 = st.columns([2, 1.5, 2.5])
         with fl_col1: busca_lead = st.text_input("🔎 Pesquisar Nome ou WhatsApp", key="busca_lead")
-        with fl_col2: filtro_status_lead = st.selectbox("Status", ["Todos", "Em busca", "Já comprou"], index=1, key="filtro_status_lead")
+        with fl_col2: filtro_status_lead = st.selectbox("Status do Funil", ["Todos"] + STATUS_LEADS, index=0, key="filtro_status_lead")
         with fl_col3: filtro_bairro_lead = st.selectbox("Filtrar por Bairro", ["Todos"] + BAIRROS_PASSOS, key="filtro_bairro_lead")
 
     st.divider()
@@ -812,10 +815,10 @@ elif menu == "👥 Gerenciar Leads":
     if filtro_bairro_lead != "Todos":
         leads_filtrados = [l for l in leads_filtrados if filtro_bairro_lead in str(l.get('bairros_interesse', ''))]
 
-    st.caption(f"Exibindo **{len(leads_filtrados)}** de **{len(leads_data)}** clientes.")
+    st.caption(f"Exibindo **{len(leads_filtrados)}** de **{len(leads_data)}** clientes no funil.")
 
     if not leads_filtrados:
-        st.info("Nenhum lead encontrado.")
+        st.info("Nenhum lead encontrado com os filtros selecionados.")
     else:
         for lead in leads_filtrados:
             lead_id = lead.get('id')
@@ -835,7 +838,7 @@ elif menu == "👥 Gerenciar Leads":
 
             with st.container():
                 st.markdown('<div class="stCard">', unsafe_allow_html=True)
-                col1, col2 = st.columns([3, 1])
+                col1, col2 = st.columns([2.5, 1.5])
                 with col1:
                     st.subheader(f"👤 {nome_lead} — {zap_lead}")
                     st.write(f"📍 **Bairros de Interesse:** {bairros_str}")
@@ -844,10 +847,17 @@ elif menu == "👥 Gerenciar Leads":
                         st.write(f"📝 **Desejos / Obs:** {obs_val}")
                 
                 with col2:
-                    novo_status_lead = st.radio("Status do Lead:", ["Em busca", "Já comprou"], index=0 if status_lead == "Em busca" else 1, key=f"status_direct_{lead_id}")
+                    idx_status = STATUS_LEADS.index(status_lead) if status_lead in STATUS_LEADS else 0
+                    novo_status_lead = st.selectbox(
+                        "📌 Etapa no Funil de Vendas:",
+                        STATUS_LEADS,
+                        index=idx_status,
+                        key=f"status_funil_{lead_id}"
+                    )
+                    
                     if novo_status_lead != status_lead:
                         supabase.table("leads").update({"status": novo_status_lead}).eq("id", lead_id).execute()
-                        st.success("Status atualizado!")
+                        st.success(f"Status alterado para: **{novo_status_lead}**!")
                         st.rerun()
 
                 with st.expander("💬 Histórico de Atendimentos / Interações"):
@@ -857,7 +867,7 @@ elif menu == "👥 Gerenciar Leads":
                         with c_i1:
                             corretor_int = st.selectbox("Corretor", CORRETORES, key=f"c_int_{lead_id}")
                         with c_i2:
-                            nota_int = st.text_input("Resumo da conversa / Feedback", placeholder="Ex: Enviei opções pelo WhatsApp, cliente gostou do imóvel MS-002 e quer agendar visita.", key=f"n_int_{lead_id}")
+                            nota_int = st.text_input("Resumo da conversa / Feedback", placeholder="Ex: Cliente visitou imóvel MS-002 e enviou proposta.", key=f"n_int_{lead_id}")
                         
                         btn_salvar_int = st.form_submit_button("💬 Registrar Interação", type="secondary")
                         if btn_salvar_int:
@@ -888,7 +898,7 @@ elif menu == "👥 Gerenciar Leads":
 
                 col_edit, col_del = st.columns(2)
                 with col_edit:
-                    with st.expander("✏️ Editar Lead"):
+                    with st.expander("✏️ Editar Perfil do Lead"):
                         with st.form(key=f"form_edit_lead_{lead_id}"):
                             e_nome = st.text_input("Nome", value=str(nome_lead))
                             e_zap = st.text_input("WhatsApp", value=str(zap_lead))
@@ -941,10 +951,10 @@ elif menu == "🎯 Encontrar Matches":
     if not leads_data:
         st.info("Nenhum lead cadastrado para realizar o cruzamento.")
     else:
-        opcoes_leads = {f"{l.get('nome', 'Sem nome')} ({l.get('whatsapp', 'S/N')})": l for l in leads_data if l.get('status', 'Em busca') == 'Em busca'}
+        opcoes_leads = {f"{l.get('nome', 'Sem nome')} ({l.get('whatsapp', 'S/N')})": l for l in leads_data if l.get('status') not in ['Já comprou', 'Perdido/Inativo']}
         
         if not opcoes_leads:
-            st.warning("Não há leads com status 'Em busca' no momento.")
+            st.warning("Não há leads ativos em negociação no momento.")
         else:
             lead_sel_nome = st.selectbox("Selecione o Lead para buscar imóveis compatíveis:", list(opcoes_leads.keys()))
             lead_sel = opcoes_leads[lead_sel_nome]
@@ -1012,7 +1022,7 @@ elif menu == "📅 Visitas Agendadas":
         v_c1, v_c2 = st.columns(2)
         
         imoveis_opts = [f"{i.get('codigo_imovel')} - {i.get('tipo')} ({i.get('bairro')})" for i in imoveis_data if i.get('status', 'Disponível') == 'Disponível']
-        leads_opts = [f"{l.get('nome')} ({l.get('whatsapp')})" for l in leads_data if l.get('status', 'Em busca') == 'Em busca']
+        leads_opts = [f"{l.get('nome')} ({l.get('whatsapp')})" for l in leads_data if l.get('status') not in ['Já comprou', 'Perdido/Inativo']]
 
         with v_c1:
             imovel_visita = st.selectbox("Selecione o Imóvel *", imoveis_opts if imoveis_opts else ["Nenhum imóvel disponível"])
