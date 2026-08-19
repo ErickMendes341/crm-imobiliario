@@ -921,11 +921,11 @@ elif menu == "👥 Funil de Leads":
                         st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# 🎯 ABA 6: ENCONTRAR MATCHES
+# 🎯 ABA 6: ENCONTRAR MATCHES COM AÇÕES
 # ==========================================
 elif menu == "🎯 Encontrar Matches":
     st.title("🎯 Cruzamento de Dados (Matches)")
-    st.write("Encontre os imóveis ideais para cada cliente com base em perfil e orçamento.")
+    st.write("Encontre os imóveis ideais para cada cliente e gerencie as etapas do match.")
     st.divider()
 
     if not leads_data:
@@ -938,6 +938,7 @@ elif menu == "🎯 Encontrar Matches":
         else:
             lead_sel_nome = st.selectbox("Selecione o Lead para buscar imóveis compatíveis:", list(opcoes_leads.keys()))
             lead_sel = opcoes_leads[lead_sel_nome]
+            lead_id = lead_sel.get('id')
 
             bairros_lead_raw = lead_sel.get('bairros_interesse', [])
             if isinstance(bairros_lead_raw, str):
@@ -948,10 +949,30 @@ elif menu == "🎯 Encontrar Matches":
             orc_lead = float(lead_sel.get('orcamento_maximo') or lead_sel.get('orcamento_max') or 0.0)
 
             st.markdown(f"**Perfil do Lead:** Orçamento de até **R$ {orc_lead:,.2f}** nos bairros: *{', '.join(bairros_lead) if bairros_lead else 'Todos'}*")
+            
+            # --- CARREGAR STATUS DOS MATCHES REGISTRADOS NO SUPABASE ---
+            historico_matches = {}
+            try:
+                res_m = supabase.table("matches_status").select("*").eq("lead_id", lead_id).execute()
+                if res_m.data:
+                    historico_matches = {item['imovel_id']: item['status'] for item in res_m.data}
+            except Exception:
+                # Caso a tabela ainda não exista no Supabase
+                pass
+
+            # Checkbox para visualizar ou não os arquivados
+            exibir_arquivados = st.checkbox("👁️ Mostrar imóveis arquivados/descartados por este cliente", value=False)
             st.divider()
 
             matches = []
             for im in imoveis_data:
+                im_id = im.get('id')
+                status_match = historico_matches.get(im_id, "Pendente")
+
+                # Se foi descartado e a opção de mostrar arquivados estiver desativada, ignora
+                if status_match == "Viu e não gostou" and not exibir_arquivados:
+                    continue
+
                 if im.get('status', 'Disponível') == 'Disponível':
                     preco_imovel = float(im.get('valor_venda', 0.0))
                     bairro_imovel = im.get('bairro', '')
@@ -960,36 +981,98 @@ elif menu == "🎯 Encontrar Matches":
                     match_bairro = (not bairros_lead) or (bairro_imovel in bairros_lead)
 
                     if match_preco and match_bairro:
-                        matches.append(im)
+                        matches.append((im, status_match))
 
             st.subheader(f"Imóveis Encontrados: {len(matches)}")
             
             if not matches:
-                st.info("Nenhum imóvel disponível corresponde exatamente aos critérios deste lead.")
+                st.info("Nenhum imóvel disponível corresponde aos critérios deste lead no momento.")
             else:
-                for match in matches:
+                for match, st_match in matches:
+                    imovel_id = match.get('id')
+                    
                     with st.container():
                         st.markdown('<div class="stCard">', unsafe_allow_html=True)
-                        m_c1, m_c2 = st.columns([3, 1])
+                        m_c1, m_c2 = st.columns([2.5, 1.5])
+                        
                         with m_c1:
                             st.markdown(f"### {match.get('tipo')} — Cód: {match.get('codigo_imovel')}")
                             st.write(f"📍 Bairro: **{match.get('bairro')}** | 💰 R$ {match.get('valor_venda', 0):,.2f}")
                             st.write(f"🛏️ {match.get('quartos', 0)} qtos | 🚿 {match.get('suites', 0)} suítes | 🚗 {match.get('vagas_garagem', 0)} vagas")
+                            
+                            if st_match != "Pendente":
+                                st.caption(f"📌 **Status atual do Match:** `{st_match}`")
+
                         with m_c2:
                             msg_wa = f"Olá {lead_sel.get('nome')}! Encontrei este imóvel perfeito para você: {match.get('tipo')} no bairro {match.get('bairro')} por R$ {match.get('valor_venda', 0):,.2f}. Código: {match.get('codigo_imovel')}."
                             url_wa = f"https://wa.me/{str(lead_sel.get('whatsapp')).replace('+', '').replace(' ', '').replace('-', '')}?text={urllib.parse.quote(msg_wa)}"
-                            st.markdown(f'<a href="{url_wa}" target="_blank" style="text-decoration:none;"><button style="width:100%; padding:10px; background-color:#25D366; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">📱 Enviar WhatsApp</button></a>', unsafe_allow_html=True)
+                            
+                            st.markdown(f'<a href="{url_wa}" target="_blank" style="text-decoration:none;"><button style="width:100%; padding:8px; background-color:#25D366; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer; margin-bottom: 6px;">📱 Enviar WhatsApp</button></a>', unsafe_allow_html=True)
                             
                             pdf_match = gerar_pdf_imovel(match)
                             st.download_button(
-                                label="📄 Baixar PDF de Vendas",
+                                label="📄 Baixar PDF",
                                 data=pdf_match,
                                 file_name=f"imovel_{match.get('codigo_imovel', 'ficha')}.pdf",
                                 mime="application/pdf",
-                                key=f"btn_pdf_match_{match.get('id')}"
+                                key=f"btn_pdf_match_{imovel_id}",
+                                use_container_width=True
                             )
-                        st.markdown('</div>', unsafe_allow_html=True)
+                            
+                            st.divider()
+                            st.caption("Ações do Match:")
+                            
+                            col_a1, col_a2, col_a3 = st.columns(3)
+                            
+                            # 1. BOTÃO VIU E NÃO GOSTOU (ARQUIVAR)
+                            with col_a1:
+                                if st.button("🚫 Descartar", key=f"desc_{imovel_id}_{lead_id}", help="Cliente viu e não gostou (Arquiva o match)"):
+                                    try:
+                                        supabase.table("matches_status").upsert({
+                                            "lead_id": lead_id,
+                                            "imovel_id": imovel_id,
+                                            "status": "Viu e não gostou"
+                                        }).execute()
+                                        st.toast("Match arquivado!", icon="📦")
+                                        st.rerun()
+                                    except Exception as err:
+                                        st.error(f"Erro: {err}")
 
+                            # 2. BOTÃO VISITA AGENDADA
+                            with col_a2:
+                                if st.button("📅 Visita", key=f"vis_{imovel_id}_{lead_id}", help="Agendar visita e atualizar lead"):
+                                    try:
+                                        supabase.table("matches_status").upsert({
+                                            "lead_id": lead_id,
+                                            "imovel_id": imovel_id,
+                                            "status": "Visita Agendada"
+                                        }).execute()
+                                        
+                                        # Atualiza também o status do lead no funil
+                                        supabase.table("leads").update({"status": "🟡 Visita Agendada"}).eq("id", lead_id).execute()
+                                        st.toast("Visita marcada e Lead movido no Funil!", icon="📅")
+                                        st.rerun()
+                                    except Exception as err:
+                                        st.error(f"Erro: {err}")
+
+                            # 3. BOTÃO PROPOSTA ENVIADA
+                            with col_a3:
+                                if st.button("📝 Proposta", key=f"prop_{imovel_id}_{lead_id}", help="Enviar proposta e mover lead"):
+                                    try:
+                                        supabase.table("matches_status").upsert({
+                                            "lead_id": lead_id,
+                                            "imovel_id": imovel_id,
+                                            "status": "Proposta Enviada"
+                                        }).execute()
+                                        
+                                        # Atualiza também o status do lead no funil
+                                        supabase.table("leads").update({"status": "🟠 Proposta Enviada (Quente)"}).eq("id", lead_id).execute()
+                                        st.toast("Proposta registrada e Lead movido no Funil!", icon="📝")
+                                        st.rerun()
+                                    except Exception as err:
+                                        st.error(f"Erro: {err}")
+
+                        st.markdown('</div>', unsafe_allow_html=True)
 # ==========================================
 # 📅 ABA 7: VISITAS AGENDADAS
 # ==========================================
