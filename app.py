@@ -13,9 +13,53 @@ st.set_page_config(
 )
 
 # ==========================================
+# 🎨 ESTILOS VISUAIS E CORES DA MARCA
+# ==========================================
+st.markdown("""
+<style>
+    /* Estilização do Menu Lateral */
+    [data-testid="stSidebar"] {
+        background-color: #121929;
+    }
+    [data-testid="stSidebar"] * {
+        color: #FFFFFF !important;
+    }
+    
+    /* Logo na Sidebar */
+    .sidebar-logo {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 10px 0px 20px 0px;
+    }
+    .sidebar-logo img {
+        max-width: 80%;
+        height: auto;
+    }
+
+    /* Cartões dos Imóveis e Matches */
+    .stCard {
+        background-color: #F8F9FA;
+        border-radius: 10px;
+        padding: 18px;
+        border-left: 5px solid #C59B27; /* Cor Dourada da Marca */
+        box-shadow: 0px 2px 8px rgba(0,0,0,0.05);
+        margin-bottom: 15px;
+    }
+
+    /* Ajuste nos títulos */
+    h1, h2, h3 {
+        color: #121929;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# URL da sua Logo
+LOGO_URL = "https://raw.githubusercontent.com/erickmendes341/crm-imobiliario/main/logo.png"
+
+# ==========================================
 # 🔌 CONEXÃO SUPABASE
 # ==========================================
-# Substitua com suas credenciais ou carregue de st.secrets
 SUPABASE_URL = st.secrets.get("SUPABASE_URL", "https://seu-projeto.supabase.co")
 SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", "sua-chave-anon-key")
 
@@ -50,7 +94,6 @@ def carregar_leads():
 imoveis_data = carregar_imoveis()
 leads_data = carregar_leads()
 
-# Mapeamento padrão de status do lead
 MAPEAMENTO_STATUS = {
     "Novo Lead": "🔵 Novo Lead (Sem Contato)",
     "Em Atendimento": "🟡 Em Atendimento",
@@ -60,7 +103,6 @@ MAPEAMENTO_STATUS = {
     "Perdido/Inativo": "🔴 Perdido/Inativo"
 }
 
-# Base da URL do aplicativo para geração dos links
 BASE_APP_URL = "https://crm-imobiliario-jfduwtza7vr6okamx3nfxf.streamlit.app"
 
 # ==========================================
@@ -128,7 +170,7 @@ if codigo_imovel_param:
                 unsafe_allow_html=True
             )
 
-        st.stop()  # Interrompe o carregamento do painel administrativo
+        st.stop()
     else:
         st.error("Imóvel não encontrado ou indisponível.")
         st.stop()
@@ -136,7 +178,12 @@ if codigo_imovel_param:
 # ==========================================
 # 📌 MENU LATERAL - PAINEL INTERNO
 # ==========================================
-st.sidebar.title("Mendes & Soares")
+# Exibição da Logo na Sidebar
+try:
+    st.sidebar.image(LOGO_URL, use_container_width=True)
+except Exception:
+    st.sidebar.title("Mendes & Soares")
+
 st.sidebar.caption("Engenharia e Imóveis | CRM")
 
 menu = st.sidebar.radio(
@@ -403,7 +450,6 @@ elif "Encontrar Matches" in menu:
 
             st.markdown(f"**Perfil do Lead:** Orçamento de até **R$ {orc_lead:,.2f}** nos bairros: *{', '.join(bairros_lead) if bairros_lead else 'Todos'}*")
             
-            # --- CARREGAR HISTÓRICO DE MATCHES ---
             historico_matches = {}
             try:
                 res_m = supabase.table("matches_status").select("*").eq("lead_id", lead_id).execute()
