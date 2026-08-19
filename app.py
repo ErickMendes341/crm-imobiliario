@@ -118,12 +118,21 @@ def gerar_pdf_imovel(imovel):
     buffer.seek(0)
     return buffer
 
-# --- FUNÇÃO DE GERAÇÃO DE DESCRIÇÃO COM IA (GEMINI MULTI-MODELO) ---
+import os
+import streamlit as st
+from google import genai
+
+# --- FUNÇÃO DE GERAÇÃO DE DESCRIÇÃO COM IA (GEMINI 2.5 FLASH) ---
 def gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor):
-    api_key = os.environ.get("GEMINI_API_KEY")
+    # Tenta obter a chave via st.secrets ou os.environ
+    try:
+        api_key = st.secrets["GEMINI_API_KEY"]
+    except Exception:
+        api_key = os.environ.get("GEMINI_API_KEY")
+
     if not api_key:
-        return "Erro: A chave 'GEMINI_API_KEY' não foi encontrada nas configurações do servidor."
-    
+        return "Erro: A chave 'GEMINI_API_KEY' não foi encontrada nas Secrets do Streamlit."
+
     prompt = f"""
     Você é um copywriter especialista no mercado imobiliário da Mendes & Soares Engenharia e Imóveis.
     Escreva uma descrição comercial altamente atraente e persuasiva para o seguinte imóvel:
@@ -140,24 +149,17 @@ def gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor):
     4. Mantenha um tom profissional, elegante e acolhedor.
     5. Termine convidando o cliente para agendar uma visita com a equipe da Mendes & Soares.
     """
-    
-    # Lista de modelos em ordem de preferência
-    modelos_para_testar = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']
-    
-    client = genai.Client(api_key=api_key)
-    
-    for modelo in modelos_para_testar:
-        try:
-            response = client.models.generate_content(
-                model=modelo,
-                contents=prompt,
-            )
-            if response and response.text:
-                return response.text
-        except Exception:
-            continue
-            
-    return "Erro ao gerar descrição com IA: Não foi possível conectar aos modelos Gemini. Verifique a API Key."
+
+    try:
+        # Instancia o cliente com a nova SDK e usa o modelo ativo Gemini 2.5 Flash
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+        )
+        return response.text
+    except Exception as e:
+        return f"Erro ao comunicar com a API do Gemini: {str(e)}"
 
 # --- FUNÇÕES DE DADOS ---
 def carregar_imoveis():
