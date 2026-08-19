@@ -36,7 +36,7 @@ STATUS_LEADS = [
     "🔴 Perdido/Inativo"
 ]
 
-# DICIONÁRIO PARA NORMALIZAR STATUS ANTIGOS SE NESCESSÁRIO
+# DICIONÁRIO PARA NORMALIZAR STATUS ANTIGOS SE NECESSÁRIO
 MAPEAMENTO_STATUS = {
     "Em busca": "🔵 Em busca (Frio)",
     "Visita Agendada": "🟡 Visita Agendada",
@@ -824,17 +824,32 @@ elif menu == "👥 Funil de Leads":
     if filtro_bairro_lead != "Todos":
         leads_filtrados = [l for l in leads_filtrados if filtro_bairro_lead in str(l.get('bairros_interesse', ''))]
 
-    # ABAS COMPACTAS POR STATUS
-    tabs = st.tabs(STATUS_LEADS)
+    # Contagem e Agrupamento dos Leads
+    contagem_por_status = {status: 0 for status in STATUS_LEADS}
+    leads_agrupados = {status: [] for status in STATUS_LEADS}
 
-    for i, status_aba in enumerate(STATUS_LEADS):
+    for l in leads_filtrados:
+        st_lead = l.get('status', '🔵 Em busca (Frio)')
+        st_normalizado = MAPEAMENTO_STATUS.get(st_lead, st_lead)
+        
+        if st_normalizado in contagem_por_status:
+            contagem_por_status[st_normalizado] += 1
+            leads_agrupados[st_normalizado].append(l)
+        else:
+            contagem_por_status["🔵 Em busca (Frio)"] += 1
+            leads_agrupados["🔵 Em busca (Frio)"].append(l)
+
+    # Rótulos com formato "02 🔵 STATUS"
+    titulos_abas = [
+        f"{contagem_por_status[status]:02d} {status}" 
+        for status in STATUS_LEADS
+    ]
+
+    tabs = st.tabs(titulos_abas)
+
+    for i, status_original in enumerate(STATUS_LEADS):
         with tabs[i]:
-            leads_da_aba = []
-            for l in leads_filtrados:
-                st_lead = l.get('status', '🔵 Em busca (Frio)')
-                st_normalizado = MAPEAMENTO_STATUS.get(st_lead, st_lead)
-                if st_normalizado == status_aba:
-                    leads_da_aba.append(l)
+            leads_da_aba = leads_agrupados[status_original]
 
             st.caption(f"Total nesta etapa: **{len(leads_da_aba)}** cliente(s)")
 
@@ -856,11 +871,11 @@ elif menu == "👥 Funil de Leads":
                         
                         c1, c2 = st.columns([2.5, 1.5])
                         with c1:
-                            st.markdown(f"**{status_aba.split()[0]} {nome_lead}** | 📱 {zap_lead}")
+                            st.markdown(f"**{status_original.split()[0]} {nome_lead}** | 📱 {zap_lead}")
                             st.caption(f"📍 {bairros_str} | 💰 R$ {float(orc_val):,.2f} | 🔑 {corr_val}")
                         
                         with c2:
-                            idx_atual = STATUS_LEADS.index(status_aba) if status_aba in STATUS_LEADS else 0
+                            idx_atual = STATUS_LEADS.index(status_original) if status_original in STATUS_LEADS else 0
                             novo_st = st.selectbox(
                                 "Mover para:",
                                 STATUS_LEADS,
@@ -868,7 +883,7 @@ elif menu == "👥 Funil de Leads":
                                 key=f"fast_move_{lead_id}",
                                 label_visibility="collapsed"
                             )
-                            if novo_st != status_aba:
+                            if novo_st != status_original:
                                 supabase.table("leads").update({"status": novo_st}).eq("id", lead_id).execute()
                                 st.rerun()
 
