@@ -122,9 +122,8 @@ import os
 import streamlit as st
 from google import genai
 
-# --- FUNÇÃO DE GERAÇÃO DE DESCRIÇÃO COM IA (GEMINI 2.5 FLASH) ---
+# --- FUNÇÃO DE GERAÇÃO DE DESCRIÇÃO COM IA (GEMINI 3.6 FLASH) ---
 def gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor):
-    # Tenta obter a chave via st.secrets ou os.environ
     try:
         api_key = st.secrets["GEMINI_API_KEY"]
     except Exception:
@@ -151,10 +150,9 @@ def gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor):
     """
 
     try:
-        # Instancia o cliente com a nova SDK e usa o modelo ativo Gemini 2.5 Flash
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.6-flash",
             contents=prompt,
         )
         return response.text
