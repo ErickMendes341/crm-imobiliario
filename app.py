@@ -26,15 +26,25 @@ COR_TEXTO = "#101620"          # Texto escuro refinado
 # --- LISTA DE CORRETORES ---
 CORRETORES = ["Erick Mendes", "Pedro Siqueira"]
 
-# --- FUNIL DE VENDAS / STATUS DOS LEADS ---
+# --- FUNIL DE VENDAS COM EMOJIS DE TEMPERATURA / STATUS ---
 STATUS_LEADS = [
-    "Em busca", 
-    "Visita Agendada", 
-    "Proposta Enviada", 
-    "Em Cartório", 
-    "Já comprou", 
-    "Perdido/Inativo"
+    "🔵 Em busca (Frio)",
+    "🟡 Visita Agendada",
+    "🟠 Proposta Enviada (Quente)",
+    "🟣 Em Cartório",
+    "🟢 Já comprou (Fechado)",
+    "🔴 Perdido/Inativo"
 ]
+
+# DICIONÁRIO PARA NORMALIZAR STATUS ANTIGOS SE NESCESSÁRIO
+MAPEAMENTO_STATUS = {
+    "Em busca": "🔵 Em busca (Frio)",
+    "Visita Agendada": "🟡 Visita Agendada",
+    "Proposta Enviada": "🟠 Proposta Enviada (Quente)",
+    "Em Cartório": "🟣 Em Cartório",
+    "Já comprou": "🟢 Já comprou (Fechado)",
+    "Perdido/Inativo": "🔴 Perdido/Inativo"
+}
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
@@ -198,7 +208,7 @@ def carregar_interacoes(lead_id):
 
 def calcular_total_matches(imoveis, leads):
     total = 0
-    leads_ativos = [l for l in leads if l.get('status', 'Em busca') not in ['Já comprou', 'Perdido/Inativo']]
+    leads_ativos = [l for l in leads if MAPEAMENTO_STATUS.get(l.get('status'), l.get('status')) not in ['🟢 Já comprou (Fechado)', '🔴 Perdido/Inativo']]
     imoveis_disp = [i for i in imoveis if i.get('status', 'Disponível') == 'Disponível']
     
     for l in leads_ativos:
@@ -254,9 +264,9 @@ st.markdown(f"""
     .stCard {{
         background-color: {COR_CARD};
         border-radius: 12px;
-        padding: 16px;
+        padding: 14px;
         box-shadow: 0 4px 15px rgba(24, 30, 41, 0.06);
-        margin-bottom: 16px;
+        margin-bottom: 12px;
         border-left: 6px solid {COR_DOURADO};
         border-top: 1px solid #e2e8f0;
         border-right: 1px solid #e2e8f0;
@@ -352,10 +362,10 @@ if menu == "📊 Dashboard":
     col1, col2, col3, col4, col5 = st.columns(5)
     
     imoveis_disponiveis = [i for i in imoveis_data if i.get('status', 'Disponível') == 'Disponível']
-    leads_em_negociacao = [l for l in leads_data if l.get('status', 'Em busca') not in ['Já comprou', 'Perdido/Inativo']]
+    leads_em_negociacao = [l for l in leads_data if MAPEAMENTO_STATUS.get(l.get('status'), l.get('status')) not in ['🟢 Já comprou (Fechado)', '🔴 Perdido/Inativo']]
     visitas_pendentes = [v for v in visitas_data if v.get('status', 'Agendada') == 'Agendada']
     total_matches = calcular_total_matches(imoveis_data, leads_data)
-    leads_fechados = [l for l in leads_data if l.get('status') == 'Já comprou']
+    leads_fechados = [l for l in leads_data if MAPEAMENTO_STATUS.get(l.get('status'), l.get('status')) == '🟢 Já comprou (Fechado)']
     
     with col1:
         st.metric(label="🏠 Imóveis Disponíveis", value=len(imoveis_disponiveis))
@@ -522,7 +532,7 @@ elif menu == "📋 Imóveis Cadastrados":
                             st.success(f"Imóvel **{imovel.get('codigo_imovel')}** removido com sucesso!")
                             st.rerun()
 
-                # --- SANFONA DE EDIÇÃO COM CORREÇÃO DE ESTADO ---
+                # --- SANFONA DE EDIÇÃO COM FORMULÁRIO INTERNO ---
                 with st.expander(f"✏️ Editar imóvel {imovel.get('codigo_imovel')}"):
                     tipos_list = ["Casa", "Apartamento", "Terreno", "Sobrado", "Cobertura", "Sítio/Chácara"]
                     idx_tipo = tipos_list.index(imovel.get('tipo')) if imovel.get('tipo') in tipos_list else 0
@@ -533,7 +543,6 @@ elif menu == "📋 Imóveis Cadastrados":
                     if key_desc not in st.session_state:
                         st.session_state[key_desc] = imovel.get('descricao', '')
 
-                    # Formulário de edição
                     with st.form(key=f"form_editar_imovel_{imovel_id}"):
                         e_c1, e_c2, e_c3 = st.columns(3)
                         with e_c1:
@@ -792,153 +801,109 @@ elif menu == "👤 Novo Lead":
                     st.error(f"Erro ao salvar lead: {err}")
 
 # ==========================================
-# 👥 ABA 5: GERENCIAR LEADS + FUNIL DE VENDAS
+# 👥 ABA 5: FUNIL DE LEADS COMPACTO POR ABAS
 # ==========================================
 elif menu == "👥 Funil de Leads":
-    st.title("👥 Gestão do Funil de Leads")
-    st.write("Acompanhe o status de negociação, histórico de atendimento e atualize o funil de vendas.")
+    st.title("👥 Funil de Negociação de Leads")
+    st.caption("Organização em colunas compactas por status de atendimento.")
     
-    with st.expander("🔍 **Filtros e Busca no Funil**", expanded=True):
-        fl_col1, fl_col2, fl_col3 = st.columns([2, 1.5, 2.5])
-        with fl_col1: busca_lead = st.text_input("🔎 Pesquisar Nome ou WhatsApp", key="busca_lead")
-        with fl_col2: filtro_status_lead = st.selectbox("Status do Funil", ["Todos"] + STATUS_LEADS, index=0, key="filtro_status_lead")
-        with fl_col3: filtro_bairro_lead = st.selectbox("Filtrar por Bairro", ["Todos"] + BAIRROS_PASSOS, key="filtro_bairro_lead")
+    with st.expander("🔍 **Filtros e Busca**", expanded=False):
+        fl_col1, fl_col2 = st.columns([2, 2])
+        with fl_col1: 
+            busca_lead = st.text_input("🔎 Pesquisar Nome ou WhatsApp", key="busca_lead")
+        with fl_col2: 
+            filtro_bairro_lead = st.selectbox("Filtrar por Bairro", ["Todos"] + BAIRROS_PASSOS, key="filtro_bairro_lead")
 
     st.divider()
 
+    # Aplicação dos Filtros Gerais
     leads_filtrados = leads_data
     if busca_lead:
         termo_l = busca_lead.lower().strip()
         leads_filtrados = [l for l in leads_filtrados if termo_l in str(l.get('nome', '')).lower() or termo_l in str(l.get('whatsapp', '')).lower()]
-    if filtro_status_lead != "Todos":
-        leads_filtrados = [l for l in leads_filtrados if l.get('status', 'Em busca') == filtro_status_lead]
     if filtro_bairro_lead != "Todos":
         leads_filtrados = [l for l in leads_filtrados if filtro_bairro_lead in str(l.get('bairros_interesse', ''))]
 
-    st.caption(f"Exibindo **{len(leads_filtrados)}** de **{len(leads_data)}** clientes no funil.")
+    # ABAS COMPACTAS POR STATUS
+    tabs = st.tabs(STATUS_LEADS)
 
-    if not leads_filtrados:
-        st.info("Nenhum lead encontrado com os filtros selecionados.")
-    else:
-        for lead in leads_filtrados:
-            lead_id = lead.get('id')
-            status_lead = lead.get('status', 'Em busca')
-            nome_lead = lead.get('nome', 'Sem nome')
-            zap_lead = lead.get('whatsapp', 'S/N')
-            bairros_raw = lead.get('bairros_interesse', '')
-            
-            if isinstance(bairros_raw, list):
-                bairros_str = ", ".join(bairros_raw)
+    for i, status_aba in enumerate(STATUS_LEADS):
+        with tabs[i]:
+            leads_da_aba = []
+            for l in leads_filtrados:
+                st_lead = l.get('status', '🔵 Em busca (Frio)')
+                st_normalizado = MAPEAMENTO_STATUS.get(st_lead, st_lead)
+                if st_normalizado == status_aba:
+                    leads_da_aba.append(l)
+
+            st.caption(f"Total nesta etapa: **{len(leads_da_aba)}** cliente(s)")
+
+            if not leads_da_aba:
+                st.info("Nenhum cliente nesta etapa.")
             else:
-                bairros_str = str(bairros_raw or "Nenhum")
+                for lead in leads_da_aba:
+                    lead_id = lead.get('id')
+                    nome_lead = lead.get('nome', 'Sem nome')
+                    zap_lead = lead.get('whatsapp', 'S/N')
+                    bairros_raw = lead.get('bairros_interesse', '')
+                    bairros_str = ", ".join(bairros_raw) if isinstance(bairros_raw, list) else str(bairros_raw or "Nenhum")
+                    orc_val = lead.get('orcamento_maximo') or lead.get('orcamento_max') or 0.0
+                    corr_val = lead.get('corretor_responsavel') or lead.get('corretor') or 'Não informado'
+                    obs_val = lead.get('observacoes', '')
 
-            orc_val = lead.get('orcamento_maximo') or lead.get('orcamento_max') or 0.0
-            corr_val = lead.get('corretor_responsavel') or lead.get('corretor') or 'Não informado'
-            obs_val = lead.get('observacoes', '')
-
-            with st.container():
-                st.markdown('<div class="stCard">', unsafe_allow_html=True)
-                col1, col2 = st.columns([2.5, 1.5])
-                with col1:
-                    st.subheader(f"👤 {nome_lead} — {zap_lead}")
-                    st.write(f"📍 **Bairros de Interesse:** {bairros_str}")
-                    st.write(f"💰 **Orçamento Máximo:** R$ {float(orc_val):,.2f} | 🔑 **Corretor:** {corr_val}")
-                    if obs_val:
-                        st.write(f"📝 **Desejos / Obs:** {obs_val}")
-                
-                with col2:
-                    idx_status = STATUS_LEADS.index(status_lead) if status_lead in STATUS_LEADS else 0
-                    novo_status_lead = st.selectbox(
-                        "📌 Etapa no Funil de Vendas:",
-                        STATUS_LEADS,
-                        index=idx_status,
-                        key=f"status_funil_{lead_id}"
-                    )
-                    
-                    if novo_status_lead != status_lead:
-                        supabase.table("leads").update({"status": novo_status_lead}).eq("id", lead_id).execute()
-                        st.success(f"Status alterado para: **{novo_status_lead}**!")
-                        st.rerun()
-
-                with st.expander("💬 Histórico de Atendimentos / Interações"):
-                    st.write("**Registrar novo contato:**")
-                    with st.form(key=f"form_interacao_{lead_id}"):
-                        c_i1, c_i2 = st.columns([1, 2])
-                        with c_i1:
-                            corretor_int = st.selectbox("Corretor", CORRETORES, key=f"c_int_{lead_id}")
-                        with c_i2:
-                            nota_int = st.text_input("Resumo da conversa / Feedback", placeholder="Ex: Cliente visitou imóvel MS-002 e enviou proposta.", key=f"n_int_{lead_id}")
+                    with st.container():
+                        st.markdown('<div class="stCard" style="padding: 10px 14px; margin-bottom: 8px;">', unsafe_allow_html=True)
                         
-                        btn_salvar_int = st.form_submit_button("💬 Registrar Interação", type="secondary")
-                        if btn_salvar_int:
-                            if not nota_int:
-                                st.error("Escreva um resumo da interação.")
-                            else:
-                                payload_int = {
-                                    "lead_id": lead_id,
-                                    "corretor": corretor_int,
-                                    "mensagem": nota_int,
-                                    "data_hora": datetime.now().strftime("%d/%m/%Y %H:%M")
-                                }
-                                try:
-                                    supabase.table("interacoes_leads").insert(payload_int).execute()
-                                    st.success("Interação registrada com sucesso!")
-                                    st.rerun()
-                                except Exception as err:
-                                    st.error(f"Erro ao salvar interação: {err}")
-
-                    historico = carregar_interacoes(lead_id)
-                    if historico:
-                        st.divider()
-                        st.write("**Histórico de Conversas:**")
-                        for h in historico:
-                            st.caption(f"🕒 **{h.get('data_hora', '')}** — **{h.get('corretor', 'Corretor')}**: {h.get('mensagem', '')}")
-                    else:
-                        st.caption("Nenhuma interação registrada para este cliente ainda.")
-
-                col_edit, col_del = st.columns(2)
-                with col_edit:
-                    with st.expander("✏️ Editar Perfil do Lead"):
-                        with st.form(key=f"form_edit_lead_{lead_id}"):
-                            e_nome = st.text_input("Nome", value=str(nome_lead))
-                            e_zap = st.text_input("WhatsApp", value=str(zap_lead))
-                            e_orc = st.number_input("Orçamento Máximo (R$)", value=float(orc_val), step=10000.0)
-                            
-                            idx_corr = CORRETORES.index(corr_val) if corr_val in CORRETORES else 0
-                            e_corr = st.selectbox("Corretor Responsável", CORRETORES, index=idx_corr)
-                            e_obs = st.text_area("Observações", value=str(obs_val))
-
-                            if st.form_submit_button("💾 Salvar Alterações", use_container_width=True, type="primary"):
-                                payload_e = {
-                                    "nome": str(e_nome),
-                                    "whatsapp": str(e_zap),
-                                    "orcamento_maximo": float(e_orc),
-                                    "orcamento_max": float(e_orc),
-                                    "corretor_responsavel": str(e_corr),
-                                    "corretor": str(e_corr),
-                                    "observacoes": str(e_obs)
-                                }
-                                colunas_lead_existentes = list(lead.keys())
-                                dados_e = {k: v for k, v in payload_e.items() if k in colunas_lead_existentes}
-                                try:
-                                    supabase.table("leads").update(dados_e).eq("id", lead_id).execute()
-                                    st.success("Lead atualizado!")
-                                    st.rerun()
-                                except Exception as err:
-                                    st.error(f"Erro ao atualizar: {err}")
-
-                with col_del:
-                    with st.expander("🗑️ Excluir Lead"):
-                        st.write(f"Tem certeza que deseja excluir **{nome_lead}**?")
-                        if st.button("Confirmar Exclusão", key=f"btn_del_lead_{lead_id}", type="primary"):
-                            try:
-                                supabase.table("leads").delete().eq("id", lead_id).execute()
-                                st.success("Lead excluído com sucesso!")
+                        c1, c2 = st.columns([2.5, 1.5])
+                        with c1:
+                            st.markdown(f"**{status_aba.split()[0]} {nome_lead}** | 📱 {zap_lead}")
+                            st.caption(f"📍 {bairros_str} | 💰 R$ {float(orc_val):,.2f} | 🔑 {corr_val}")
+                        
+                        with c2:
+                            idx_atual = STATUS_LEADS.index(status_aba) if status_aba in STATUS_LEADS else 0
+                            novo_st = st.selectbox(
+                                "Mover para:",
+                                STATUS_LEADS,
+                                index=idx_atual,
+                                key=f"fast_move_{lead_id}",
+                                label_visibility="collapsed"
+                            )
+                            if novo_st != status_aba:
+                                supabase.table("leads").update({"status": novo_st}).eq("id", lead_id).execute()
                                 st.rerun()
-                            except Exception as err:
-                                st.error(f"Erro ao excluir: {err}")
 
-                st.markdown('</div>', unsafe_allow_html=True)
+                        with st.expander("💬 Histórico / Editar"):
+                            if obs_val:
+                                st.info(f"**Obs:** {obs_val}")
+                            
+                            with st.form(key=f"form_int_compact_{lead_id}"):
+                                ic1, ic2 = st.columns([1, 2])
+                                with ic1:
+                                    c_int = st.selectbox("Corretor", CORRETORES, key=f"c_ic_{lead_id}")
+                                with ic2:
+                                    m_int = st.text_input("Nova Mensagem/Anotação", key=f"m_ic_{lead_id}")
+                                
+                                if st.form_submit_button("➕ Salvar Anotação"):
+                                    if m_int:
+                                        payload_int = {
+                                            "lead_id": lead_id,
+                                            "corretor": c_int,
+                                            "mensagem": m_int,
+                                            "data_hora": datetime.now().strftime("%d/%m/%Y %H:%M")
+                                        }
+                                        supabase.table("interacoes_leads").insert(payload_int).execute()
+                                        st.rerun()
+
+                            historico = carregar_interacoes(lead_id)
+                            for h in historico:
+                                st.caption(f"🕒 {h.get('data_hora', '')} - **{h.get('corretor')}**: {h.get('mensagem')}")
+
+                            st.divider()
+                            if st.button("🗑️ Excluir Lead", key=f"del_comp_{lead_id}", type="secondary"):
+                                supabase.table("leads").delete().eq("id", lead_id).execute()
+                                st.rerun()
+
+                        st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
 # 🎯 ABA 6: ENCONTRAR MATCHES
@@ -951,7 +916,7 @@ elif menu == "🎯 Encontrar Matches":
     if not leads_data:
         st.info("Nenhum lead cadastrado para realizar o cruzamento.")
     else:
-        opcoes_leads = {f"{l.get('nome', 'Sem nome')} ({l.get('whatsapp', 'S/N')})": l for l in leads_data if l.get('status') not in ['Já comprou', 'Perdido/Inativo']}
+        opcoes_leads = {f"{l.get('nome', 'Sem nome')} ({l.get('whatsapp', 'S/N')})": l for l in leads_data if MAPEAMENTO_STATUS.get(l.get('status'), l.get('status')) not in ['🟢 Já comprou (Fechado)', '🔴 Perdido/Inativo']}
         
         if not opcoes_leads:
             st.warning("Não há leads ativos em negociação no momento.")
@@ -1022,7 +987,7 @@ elif menu == "📅 Visitas Agendadas":
         v_c1, v_c2 = st.columns(2)
         
         imoveis_opts = [f"{i.get('codigo_imovel')} - {i.get('tipo')} ({i.get('bairro')})" for i in imoveis_data if i.get('status', 'Disponível') == 'Disponível']
-        leads_opts = [f"{l.get('nome')} ({l.get('whatsapp')})" for l in leads_data if l.get('status') not in ['Já comprou', 'Perdido/Inativo']]
+        leads_opts = [f"{l.get('nome')} ({l.get('whatsapp')})" for l in leads_data if MAPEAMENTO_STATUS.get(l.get('status'), l.get('status')) not in ['🟢 Já comprou (Fechado)', '🔴 Perdido/Inativo']]
 
         with v_c1:
             imovel_visita = st.selectbox("Selecione o Imóvel *", imoveis_opts if imoveis_opts else ["Nenhum imóvel disponível"])
