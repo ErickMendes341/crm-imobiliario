@@ -749,7 +749,7 @@ elif menu == "📝 Novo Imóvel":
 # ==========================================
 # 👤 ABA 4: NOVO LEAD
 # ==========================================
-elif menu == "➕ Novo Lead":
+elif "Novo Lead" in menu:
     st.title("➕ Cadastrar Novo Lead")
     st.write("Preencha as preferências e dados do cliente para salvar no sistema.")
     st.divider()
@@ -821,7 +821,7 @@ elif menu == "➕ Novo Lead":
                         "nome": nome,
                         "whatsapp": whatsapp,
                         "email": email,
-                        "tipo_imovel": tipo_imovel,  # Salva como Array ou Lista JSON
+                        "tipo_imovel": tipo_imovel,
                         "quartos_min": int(num_quartos),
                         "orcamento_maximo": float(orcamento),
                         "financiamento": e_financiamento,
