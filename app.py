@@ -226,7 +226,7 @@ def gerar_codigo_imovel_auto():
     proximo = max(numeros) + 1 if numeros else 1
     return f"MS-{proximo:03d}"
 
-# --- ESTILIZAÇÃO CSS PERSONALIZADA MENDES & SOARES + OTIMIZAÇÃO MOBILE ---
+# --- ESTILIZAÇÃO CSS PERSONALIZADA ---
 st.markdown(f"""
     <style>
     .stApp {{
@@ -297,8 +297,6 @@ st.markdown(f"""
         color: {COR_AZUL_MARINHO} !important;
         font-weight: 700 !important;
     }}
-    
-    /* OTIMIZAÇÃO PARA CELULAR (RESPONSIVIDADE) */
     @media (max-width: 768px) {{
         .stCard {{
             padding: 12px !important;
@@ -528,7 +526,7 @@ elif menu == "📋 Imóveis Cadastrados":
                             st.success(f"Imóvel **{imovel.get('codigo_imovel')}** removido com sucesso!")
                             st.rerun()
 
-                # --- SANFONA DE EDIÇÃO COM GERADOR DE IA ---
+                # --- SANFONA DE EDIÇÃO COM CORREÇÃO DEFINITIVA DA IA ---
                 with st.expander(f"✏️ Editar imóvel {imovel.get('codigo_imovel')}"):
                     tipos_list = ["Casa", "Apartamento", "Terreno", "Sobrado", "Cobertura", "Sítio/Chácara"]
                     idx_tipo = tipos_list.index(imovel.get('tipo')) if imovel.get('tipo') in tipos_list else 0
@@ -575,14 +573,15 @@ elif menu == "📋 Imóveis Cadastrados":
                     if st.button("✨ Gerar/Recalcular Descrição com IA", key=f"btn_ia_edit_{imovel_id}"):
                         with st.spinner("Gerando nova descrição com IA..."):
                             nova_desc = gerar_descricao_ia(
-                                tipo=e_tipo,
-                                bairro=e_bairro,
-                                quartos=e_quartos,
-                                suites=e_suites,
-                                vagas=e_vagas,
-                                valor=e_valor
+                                tipo=st.session_state.get(f"e_tipo_{imovel_id}", e_tipo),
+                                bairro=st.session_state.get(f"e_bairro_{imovel_id}", e_bairro),
+                                quartos=st.session_state.get(f"e_q_{imovel_id}", e_quartos),
+                                suites=st.session_state.get(f"e_s_{imovel_id}", e_suites),
+                                vagas=st.session_state.get(f"e_v_{imovel_id}", e_vagas),
+                                valor=st.session_state.get(f"e_valor_{imovel_id}", e_valor)
                             )
                             st.session_state[key_desc] = nova_desc
+                            st.success("Descrição atualizada com IA com sucesso!")
                             st.rerun()
 
                     e_descricao = st.text_area(
@@ -595,24 +594,24 @@ elif menu == "📋 Imóveis Cadastrados":
 
                     if st.button("💾 Salvar Alterações", key=f"btn_salvar_edit_{imovel_id}", use_container_width=True, type="primary"):
                         payload = {
-                            "tipo": str(e_tipo),
-                            "bairro": str(e_bairro),
-                            "valor_venda": float(e_valor),
-                            "nome_proprietario": str(e_nome_prop),
-                            "telefone_proprietario": str(e_tel_prop),
-                            "endereco": str(e_endereco),
-                            "corretor_captacao": str(e_corretor),
-                            "quartos": int(e_quartos),
-                            "suites": int(e_suites),
-                            "banheiros": int(e_banheiros),
-                            "vagas_garagem": int(e_vagas),
-                            "garagem_coberta": bool(e_garagem_coberta),
-                            "area_gourmet": bool(e_area_gourmet),
-                            "sala": bool(e_sala),
-                            "copa": bool(e_copa),
-                            "cozinha": bool(e_cozinha),
-                            "area_terreno": float(e_area_terreno) if e_area_terreno else 0.0,
-                            "area_construida": float(e_area_construida) if e_area_construida else 0.0,
+                            "tipo": str(st.session_state.get(f"e_tipo_{imovel_id}", e_tipo)),
+                            "bairro": str(st.session_state.get(f"e_bairro_{imovel_id}", e_bairro)),
+                            "valor_venda": float(st.session_state.get(f"e_valor_{imovel_id}", e_valor)),
+                            "nome_proprietario": str(st.session_state.get(f"e_np_{imovel_id}", e_nome_prop)),
+                            "telefone_proprietario": str(st.session_state.get(f"e_tp_{imovel_id}", e_tel_prop)),
+                            "endereco": str(st.session_state.get(f"e_end_{imovel_id}", e_endereco)),
+                            "corretor_captacao": str(st.session_state.get(f"e_corr_{imovel_id}", e_corretor)),
+                            "quartos": int(st.session_state.get(f"e_q_{imovel_id}", e_quartos)),
+                            "suites": int(st.session_state.get(f"e_s_{imovel_id}", e_suites)),
+                            "banheiros": int(st.session_state.get(f"e_b_{imovel_id}", e_banheiros)),
+                            "vagas_garagem": int(st.session_state.get(f"e_v_{imovel_id}", e_vagas)),
+                            "garagem_coberta": bool(st.session_state.get(f"e_gc_{imovel_id}", e_garagem_coberta)),
+                            "area_gourmet": bool(st.session_state.get(f"e_ag_{imovel_id}", e_area_gourmet)),
+                            "sala": bool(st.session_state.get(f"e_sala_{imovel_id}", e_sala)),
+                            "copa": bool(st.session_state.get(f"e_copa_{imovel_id}", e_copa)),
+                            "cozinha": bool(st.session_state.get(f"e_cozinha_{imovel_id}", e_cozinha)),
+                            "area_terreno": float(st.session_state.get(f"e_at_{imovel_id}", e_area_terreno)),
+                            "area_construida": float(st.session_state.get(f"e_ac_{imovel_id}", e_area_construida)),
                             "descricao": str(st.session_state[key_desc])
                         }
                         
@@ -851,7 +850,6 @@ elif menu == "👥 Gerenciar Leads":
                         st.success("Status atualizado!")
                         st.rerun()
 
-                # --- HISTÓRICO DE INTERAÇÕES COM O CLIENTE ---
                 with st.expander("💬 Histórico de Atendimentos / Interações"):
                     st.write("**Registrar novo contato:**")
                     with st.form(key=f"form_interacao_{lead_id}"):
@@ -879,7 +877,6 @@ elif menu == "👥 Gerenciar Leads":
                                 except Exception as err:
                                     st.error(f"Erro ao salvar interação: {err}")
 
-                    # Lista interações registradas
                     historico = carregar_interacoes(lead_id)
                     if historico:
                         st.divider()
