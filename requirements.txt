@@ -1,4 +1,6 @@
 streamlit
+google-genai
 supabase
 reportlab
-google-genai
+Pillow
+streamlit-drawable-canvas
