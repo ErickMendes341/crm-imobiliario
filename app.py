@@ -18,6 +18,20 @@ CONFIG_EMPRESA = {
 }
 
 # ==========================================
+# 🔐 SEGURANÇA E CHAVES (SECRETS)
+# ==========================================
+SUPABASE_URL = st.secrets.get("SUPABASE_URL", os.environ.get("SUPABASE_URL", "https://dsnamhmffvjxcfqtlzet.supabase.co"))
+SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", os.environ.get("SUPABASE_KEY", "sb_publishable_XVO9PLxpxWBnr32_UYt_UA_HSdspi16"))
+
+@st.cache_resource
+def init_supabase():
+    return create_client(SUPABASE_URL, SUPABASE_KEY)
+
+supabase = init_supabase()
+
+URL_BASE_APP = "https://crm-imobiliario-jfduwtza7vr6okamx3nfxf.streamlit.app"
+
+# ==========================================
 # 📊 FUNÇÕES DO SUPABASE PARA LEADS E STATUS
 # ==========================================
 def excluir_lead(lead_id):
@@ -125,18 +139,6 @@ BAIRROS_PASSOS = sorted([
     "Polivalente", "Primavera", "Recanto do Bosque", "Santa Luzia", "São Benedito",
     "São Francisco", "Tropical", "Vale Verde 1 e 2", "Vilagio D´Italia", "Vila Rica"
 ])
-
-# --- CONEXÃO SUPABASE ---
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://dsnamhmffvjxcfqtlzet.supabase.co")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "sb_publishable_XVO9PLxpxWBnr32_UYt_UA_HSdspi16")
-
-@st.cache_resource
-def init_supabase():
-    return create_client(SUPABASE_URL, SUPABASE_KEY)
-
-supabase = init_supabase()
-
-URL_BASE_APP = "https://crm-imobiliario-jfduwtza7vr6okamx3nfxf.streamlit.app"
 
 # ==========================================
 # 🚀 FUNÇÕES COM CACHE PARA DESEMPENHO
@@ -306,13 +308,10 @@ if "imovel" in query_params:
 
 # --- GERAR DESCRIÇÃO COM IA (GEMINI) ---
 def gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor):
-    try:
-        api_key = st.secrets["GEMINI_API_KEY"]
-    except Exception:
-        api_key = os.environ.get("GEMINI_API_KEY")
+    api_key = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY"))
 
     if not api_key:
-        return "Erro: A chave 'GEMINI_API_KEY' não foi encontrada."
+        return "Erro: A chave 'GEMINI_API_KEY' não foi encontrada em st.secrets."
 
     prompt = f"""
     Você é um copywriter especialista no mercado imobiliário da Mendes & Soares Engenharia e Imóveis.
@@ -673,7 +672,6 @@ elif menu == "👤 Novo Lead":
             
         orcamento = st.number_input("Orçamento Máximo (R$)", min_value=0.0, value=500000.0, step=10000.0, format="%.2f")
         
-        # PERMITE ESCOLHER CASA E APARTAMENTO JUNTOS
         tipos_imovel = st.multiselect(
             "Tipos de Imóvel de Interesse*",
             OPCOES_TIPO_IMOVEL,
@@ -792,20 +790,17 @@ elif menu == "👥 Funil de Leads":
 
                         # --- HISTÓRICO DE INTERAÇÕES ---
                         with st.expander(f"📜 Histórico de Atendimento / Anotações ({nome_lead})"):
-                            # Registrar nova anotação
                             with st.form(key=f"form_hist_{lead_id}", clear_on_submit=True):
                                 nova_nota = st.text_input("Adicionar nova anotação/ligação:")
                                 btn_add_nota = st.form_submit_button("➕ Salvar Registro")
                                 if btn_add_nota and nova_nota:
                                     agora = datetime.now().strftime("%d/%m/%Y %H:%M")
-                                    # Formato textual acumulativo no campo observacoes ou tabela propria
                                     texto_atualizado = f"[{agora}] {nova_nota}\n" + (obs_lead if obs_lead else "")
                                     supabase.table("leads").update({"observacoes": texto_atualizado}).eq("id", lead_id).execute()
                                     limpar_cache()
                                     st.success("Anotação registrada!")
                                     st.rerun()
 
-                            # Exibição dos registros
                             st.markdown("**Linha do tempo de atendimentos:**")
                             if obs_lead:
                                 for linha in obs_lead.split("\n"):
@@ -850,7 +845,7 @@ elif menu == "👥 Funil de Leads":
                         st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# 🎯 ABA 6: ENCONTRAR MATCHES (UTILIZANDO st.segmented_control)
+# 🎯 ABA 6: ENCONTRAR MATCHES
 # ==========================================
 elif menu == "🎯 Encontrar Matches":
     leads_data = carregar_leads()
@@ -873,7 +868,6 @@ elif menu == "🎯 Encontrar Matches":
             nome_lead = lead.get('nome', 'Sem Nome')
             wsp_lead = lead.get('whatsapp', '')
             
-            # --- TRATAMENTO SEGURO DE INTERAÇÕES ---
             interacoes_lead = lead.get('interacoes_imoveis') or {}
             if isinstance(interacoes_lead, str):
                 import json
@@ -886,17 +880,14 @@ elif menu == "🎯 Encontrar Matches":
             if phone_clean and not phone_clean.startswith("55"):
                 phone_clean = f"55{phone_clean}"
 
-            # --- TRATAMENTO SEGURO DE ORÇAMENTO ---
             try:
                 orc_lead = float(lead.get('orcamento_maximo') or lead.get('orcamento_max') or 0.0)
             except (ValueError, TypeError):
                 orc_lead = 0.0
 
-            # Margens de -15% e +15%
             orc_min_margem = orc_lead * 0.85
             orc_max_margem = orc_lead * 1.15 if orc_lead > 0 else float('inf')
             
-            # --- TRATAMENTO SEGURO DE TIPOS DE IMOVEL ---
             tipos_raw = lead.get('tipo_imovel', [])
             if isinstance(tipos_raw, str):
                 limpo = tipos_raw.replace("[", "").replace("]", "").replace("'", "").replace('"', "")
@@ -906,7 +897,6 @@ elif menu == "🎯 Encontrar Matches":
             else:
                 tipos_interesse = []
 
-            # --- TRATAMENTO SEGURO DE BAIRROS ---
             bairros_raw = lead.get('bairros_interesse', [])
             if isinstance(bairros_raw, str):
                 limpo_b = bairros_raw.replace("[", "").replace("]", "").replace("'", "").replace('"', "")
@@ -956,16 +946,10 @@ elif menu == "🎯 Encontrar Matches":
             
             with st.expander(f"👤 **{nome_lead}** — 📱 {wsp_lead} | ({badge_matches})"):
                 bairros_exibicao = lead.get('bairros_interesse', [])
-                if isinstance(bairros_exibicao, list):
-                    bairros_str = ", ".join(bairros_exibicao)
-                else:
-                    bairros_str = str(bairros_exibicao).replace("[", "").replace("]", "").replace("'", "")
+                bairros_str = ", ".join(bairros_exibicao) if isinstance(bairros_exibicao, list) else str(bairros_exibicao).replace("[", "").replace("]", "").replace("'", "")
 
                 tipos_exibicao = lead.get('tipo_imovel', [])
-                if isinstance(tipos_exibicao, list):
-                    tipos_str = ", ".join(tipos_exibicao)
-                else:
-                    tipos_str = str(tipos_exibicao).replace("[", "").replace("]", "").replace("'", "")
+                tipos_str = ", ".join(tipos_exibicao) if isinstance(tipos_exibicao, list) else str(tipos_exibicao).replace("[", "").replace("]", "").replace("'", "")
 
                 st.markdown(f"""
                 **Parâmetros do Cliente:**
@@ -1005,7 +989,6 @@ elif menu == "🎯 Encontrar Matches":
                             
                             st.link_button("📲 Enviar no WhatsApp do Lead", url_whatsapp, type="primary", use_container_width=True)
 
-                            # --- UX: Seleção segmentada limpa usando st.segmented_control ---
                             opcoes_status = ["⚪ Não Enviado", "👁️ Visto", "❌ Sem Interesse", "📅 Visita Agendada"]
                             
                             novo_status = st.segmented_control(
