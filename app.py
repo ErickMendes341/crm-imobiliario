@@ -328,7 +328,6 @@ def gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor):
 
     client = genai.Client(api_key=api_key)
     
-    # Tenta até 3 vezes em caso de indisponibilidade de servidor (503 / alta demanda)[cite: 3]
     tentativas = 3
     for tentativa in range(tentativas):
         try:
@@ -339,7 +338,7 @@ def gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor):
             return response.text
         except Exception as e:
             if ("503" in str(e) or "UNAVAILABLE" in str(e)) and tentativa < tentativas - 1:
-                time.sleep(2)  # Aguarda 2 segundos antes de tentar novamente[cite: 3]
+                time.sleep(2)
                 continue
             return f"Erro ao comunicar com a API do Gemini: {str(e)}"
 
@@ -682,7 +681,6 @@ elif menu == "👤 Novo Lead":
             
         orcamento = st.number_input("Orçamento Máximo (R$)", min_value=0.0, value=500000.0, step=10000.0, format="%.2f")
         
-        # PERMITE ESCOLHER CASA E APARTAMENTO JUNTOS
         tipos_imovel = st.multiselect(
             "Tipos de Imóvel de Interesse*",
             OPCOES_TIPO_IMOVEL,
@@ -756,7 +754,6 @@ elif menu == "👥 Funil de Leads":
                     orc_lead = float(lead.get('orcamento_maximo') or lead.get('orcamento_max') or 0.0)
                     obs_lead = lead.get('observacoes', '')
                     
-                    # Tratamento dos bairros
                     bairros_raw = lead.get('bairros_interesse', [])
                     if isinstance(bairros_raw, str):
                         bairros_lead = [b.strip() for b in bairros_raw.split(",") if b.strip()]
@@ -765,7 +762,6 @@ elif menu == "👥 Funil de Leads":
                     else:
                         bairros_lead = []
 
-                    # Tratamento dos tipos de imóveis
                     tipos_raw = lead.get('tipo_imovel', [])
                     if isinstance(tipos_raw, str):
                         tipos_lead = [t.strip() for t in tipos_raw.split(",") if t.strip()]
@@ -798,12 +794,10 @@ elif menu == "👥 Funil de Leads":
                                 st.success("Status atualizado!")
                                 st.rerun()
 
-                      # --- HISTÓRICO DE ATENDIMENTO ---
+                        # --- HISTÓRICO DE ATENDIMENTO ---
                         with st.expander(f"📜 Histórico de Atendimentos ({nome_lead})"):
-                            # Buscar interações existentes
                             historico = carregar_interacoes(lead_id)
                             
-                            # Form para adicionar nova anotação
                             with st.form(key=f"form_hist_{lead_id}", clear_on_submit=True):
                                 col_h1, col_h2 = st.columns([3, 1])
                                 with col_h1:
@@ -827,7 +821,7 @@ elif menu == "👥 Funil de Leads":
 
                             st.divider()
 
-                            # Exibir lista de histórico com botão de exclusão individual
+                            # Exibir lista de histórico com botão de exclusão individual (ÚNICO BLOCO CORRETO)
                             if not historico:
                                 st.caption("Nenhum atendimento registrado até o momento.")
                             else:
@@ -859,26 +853,6 @@ elif menu == "👥 Funil de Leads":
                                             except Exception as e:
                                                 st.error(f"Erro ao excluir: {e}")
 
-                                    st.divider()
-
-                            # Exibir lista de histórico
-                            if not historico:
-                                st.caption("Nenhum atendimento registrado até o momento.")
-                            else:
-                                for h in historico:
-                                    dt_str = h.get('data_hora', '')
-                                    texto_nota = h.get('observacao') or h.get('anotacao') or 'Sem conteúdo'
-                                    if dt_str:
-                                        try:
-                                            dt_obj = datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
-                                            data_formatada = dt_obj.strftime("%d/%m/%Y às %H:%M")
-                                        except Exception:
-                                            data_formatada = dt_str
-                                    else:
-                                        data_formatada = "Data não informada"
-                                    
-                                    st.markdown(f"🗓️ **{data_formatada}** | 👤 *{h.get('corretor', 'Sistema')}*")
-                                    st.write(f"💬 {texto_nota}")
                                     st.divider()
 
                         # Expander de Edição e Exclusão do Lead
@@ -933,7 +907,7 @@ elif menu == "👥 Funil de Leads":
                         st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# 🎯 ABA 6: ENCONTRAR MATCHES (UTILIZANDO st.segmented_control)
+# 🎯 ABA 6: ENCONTRAR MATCHES
 # ==========================================
 elif menu == "🎯 Encontrar Matches":
     leads_data = carregar_leads()
@@ -956,7 +930,6 @@ elif menu == "🎯 Encontrar Matches":
             nome_lead = lead.get('nome', 'Sem Nome')
             wsp_lead = lead.get('whatsapp', '')
             
-            # --- TRATAMENTO SEGURO DE INTERAÇÕES ---
             interacoes_lead = lead.get('interacoes_imoveis') or {}
             if isinstance(interacoes_lead, str):
                 import json
@@ -969,17 +942,14 @@ elif menu == "🎯 Encontrar Matches":
             if phone_clean and not phone_clean.startswith("55"):
                 phone_clean = f"55{phone_clean}"
 
-            # --- TRATAMENTO SEGURO DE ORÇAMENTO ---
             try:
                 orc_lead = float(lead.get('orcamento_maximo') or lead.get('orcamento_max') or 0.0)
             except (ValueError, TypeError):
                 orc_lead = 0.0
 
-            # Margens de -15% e +15%
             orc_min_margem = orc_lead * 0.85
             orc_max_margem = orc_lead * 1.15 if orc_lead > 0 else float('inf')
             
-            # --- TRATAMENTO SEGURO DE TIPOS DE IMOVEL ---
             tipos_raw = lead.get('tipo_imovel', [])
             if isinstance(tipos_raw, str):
                 limpo = tipos_raw.replace("[", "").replace("]", "").replace("'", "").replace('"', "")
@@ -989,7 +959,6 @@ elif menu == "🎯 Encontrar Matches":
             else:
                 tipos_interesse = []
 
-            # --- TRATAMENTO SEGURO DE BAIRROS ---
             bairros_raw = lead.get('bairros_interesse', [])
             if isinstance(bairros_raw, str):
                 limpo_b = bairros_raw.replace("[", "").replace("]", "").replace("'", "").replace('"', "")
@@ -1088,7 +1057,6 @@ elif menu == "🎯 Encontrar Matches":
                             
                             st.link_button("📲 Enviar no WhatsApp do Lead", url_whatsapp, type="primary", use_container_width=True)
 
-                            # --- UX: Seleção segmentada limpa usando st.segmented_control ---
                             opcoes_status = ["⚪ Não Enviado", "👁️ Visto", "❌ Sem Interesse", "📅 Visita Agendada"]
                             
                             novo_status = st.segmented_control(
