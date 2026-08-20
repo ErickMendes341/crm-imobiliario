@@ -79,6 +79,9 @@ URL_BASE_APP = "https://crm-imobiliario-jfduwtza7vr6okamx3nfxf.streamlit.app"
 
 import streamlit.components.v1 as components
 
+import streamlit.components.v1 as components
+import urllib.parse
+
 # ==========================================
 # 🌐 VISUALIZAÇÃO LIMPA DO CLIENTE (OPTIMIZED MOBILE)
 # ==========================================
@@ -165,6 +168,68 @@ if "imovel" in query_params:
             st.caption(f"Código: **{imovel_cli.get('codigo_imovel')}** | Passos - MG")
             
             st.markdown(f'<div class="price-tag-client">R$ {float(imovel_cli.get("valor_venda", 0)):,.2f}</div>', unsafe_allow_html=True)
+            
+            # --- GALERIA DE FOTOS COM SWIPE TOUCH (SWIPER.JS) ---
+            fotos_cli = imovel_cli.get("fotos_urls") or []
+            if fotos_cli:
+                slides_html = "".join([f'<div class="swiper-slide"><img src="{url}" style="width:100%; border-radius:12px; height:280px; object-fit:cover;"></div>' for url in fotos_cli])
+                
+                swiper_code = f"""
+                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+                <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+                
+                <div class="swiper mySwiper" style="width:100%; height:300px; padding-bottom:20px;">
+                  <div class="swiper-wrapper">
+                    {slides_html}
+                  </div>
+                  <div class="swiper-pagination"></div>
+                </div>
+
+                <script>
+                  var swiper = new Swiper(".mySwiper", {{
+                    pagination: {{ el: ".swiper-pagination", clickable: true }},
+                    loop: true,
+                  }});
+                </script>
+                """
+                components.html(swiper_code, height=310)
+            else:
+                st.info("Nenhuma foto cadastrada para este imóvel.")
+
+            # --- ESPECIFICAÇÕES EM GRID ---
+            st.markdown(f"""
+                <div class="spec-grid">
+                    <div class="spec-item">🛏️ {imovel_cli.get('quartos', 0)} Dormitórios</div>
+                    <div class="spec-item">🚿 {imovel_cli.get('suites', 0)} Suítes</div>
+                    <div class="spec-item">🚽 {imovel_cli.get('banheiros', 0)} Banheiros</div>
+                    <div class="spec-item">🚗 {imovel_cli.get('vagas_garagem', 0)} Vagas</div>
+                    {"<div class='spec-item'>📐 Lote: " + str(imovel_cli.get('area_terreno')) + " m²</div>" if imovel_cli.get('area_terreno') else ""}
+                    {"<div class='spec-item'>🏗️ Á. Const: " + str(imovel_cli.get('area_construida')) + " m²</div>" if imovel_cli.get('area_construida') else ""}
+                </div>
+            """, unsafe_allow_html=True)
+
+            # --- DESCRIÇÃO ---
+            st.subheader("📋 Descrição do Imóvel")
+            st.write(imovel_cli.get("descricao", "Sem descrição disponível."))
+
+            # --- BOTÃO FIXO FLUTUANTE DE WHATSAPP ---
+            msg_wsp = f"Olá! Vi o imóvel {imovel_cli.get('codigo_imovel')} ({imovel_cli.get('tipo')} no {imovel_cli.get('bairro')}) e gostaria de agendar uma visita!"
+            url_wsp = f"https://wa.me/5535998102465?text={urllib.parse.quote(msg_wsp)}"
+            
+            st.markdown(
+                f'<a href="{url_wsp}" target="_blank" class="whatsapp-float">'
+                f'📱 Agendar Visita no WhatsApp'
+                f'</a>',
+                unsafe_allow_html=True
+            )
+
+            st.stop()
+        else:
+            st.error("Imóvel não encontrado.")
+            st.stop()
+    except Exception as e:
+        st.error(f"Erro ao carregar dados do imóvel: {e}")
+        st.stop()
             
             # --- GALERIA DE FOTOS COM SWIPE TOUCH (SWIPER.JS) ---
             fotos_cli = imovel_cli.get("fotos_urls") or []
