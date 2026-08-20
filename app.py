@@ -821,7 +821,7 @@ elif menu == "👥 Funil de Leads":
 
                             st.divider()
 
-                            # Exibir lista de histórico com botão de exclusão individual (ÚNICO BLOCO CORRETO)
+                            # Exibir lista de histórico com botão de exclusão individual (BLOCO CORRIGIDO)
                             if not historico:
                                 st.caption("Nenhum atendimento registrado até o momento.")
                             else:
@@ -838,21 +838,22 @@ elif menu == "👥 Funil de Leads":
                                             data_formatada = dt_str
                                     else:
                                         data_formatada = "Data não informada"
-col_info, col_btn = st.columns([4, 1])
-    with col_info:
-        st.markdown(f"📅 **{data_formatada}** | 👤 **{h.get('corretor', 'Sistema')}**")
-        st.write(f"💬 {texto_nota}")
+                                    
+                                    col_info, col_btn = st.columns([4, 1])
+                                    with col_info:
+                                        st.markdown(f"📅 **{data_formatada}** | 👤 **{h.get('corretor', 'Sistema')}**")
+                                        st.write(f"💬 {texto_nota}")
 
-    with col_btn:
-        if st.button("🗑️ Excluir", key=f"del_hist_{interacao_id}", type="secondary"):
-            try:
-                supabase.table("interacoes_leads").delete().eq("id", interacao_id).execute()
-                st.success("Anotação excluída!")
-                st.rerun()
-            except Exception as e:
-                st.error(f"Erro ao excluir: {e}")
+                                    with col_btn:
+                                        if st.button("🗑️ Excluir", key=f"del_hist_{interacao_id}", type="secondary"):
+                                            try:
+                                                supabase.table("interacoes_leads").delete().eq("id", interacao_id).execute()
+                                                st.success("Anotação excluída!")
+                                                st.rerun()
+                                            except Exception as e:
+                                                st.error(f"Erro ao excluir: {e}")
 
-    st.divider()
+                                    st.divider()
 
                         # Expander de Edição e Exclusão do Lead
                         with st.expander(f"✏️ Editar / 🗑️ Excluir Dados de {nome_lead}"):
