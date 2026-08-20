@@ -816,7 +816,7 @@ elif menu == "👥 Funil de Leads":
                                     try:
                                         supabase.table("interacoes_leads").insert({
                                             "lead_id": lead_id,
-                                            "anotacao": nova_nota,
+                                            "observacao": nova_nota,
                                             "corretor": corretor_nota
                                         }).execute()
                                         st.success("Anotação salva!")
