@@ -77,8 +77,10 @@ supabase = init_supabase()
 # URL base para links compartilháveis do imóvel para clientes
 URL_BASE_APP = "https://crm-imobiliario-jfduwtza7vr6okamx3nfxf.streamlit.app"
 
+import streamlit.components.v1 as components
+
 # ==========================================
-# 🌐 VISUALIZAÇÃO LIMPA DO CLIENTE (LINK DIRETO)
+# 🌐 VISUALIZAÇÃO LIMPA DO CLIENTE (OPTIMIZED MOBILE)
 # ==========================================
 query_params = st.query_params
 
@@ -90,43 +92,141 @@ if "imovel" in query_params:
         if res_cli.data:
             imovel_cli = res_cli.data[0]
             
-            # Oculta Sidebar da Imobiliária e otimiza layout mobile
+            # CSS personalizado para Mobile & Botão Flutuante do WhatsApp
             st.markdown(
                 """
                 <style>
                     [data-testid="stSidebar"] {display: none !important;}
-                    .stApp { max-width: 900px; margin: 0 auto; }
+                    .stApp { max-width: 600px; margin: 0 auto; padding-bottom: 80px !important; }
+                    
+                    /* Card de Preço */
                     .price-tag-client {
                         background: linear-gradient(135deg, #c59b27, #a37f1e);
                         color: #ffffff;
-                        padding: 10px 20px;
-                        border-radius: 25px;
+                        padding: 10px 18px;
+                        border-radius: 20px;
                         font-weight: bold;
-                        font-size: 1.4rem;
+                        font-size: 1.3rem;
                         display: inline-block;
+                        margin-top: 5px;
                         margin-bottom: 15px;
+                        box-shadow: 0 4px 10px rgba(197, 155, 39, 0.3);
                     }
-                    .nav-btn button {
-                        font-size: 1.5rem !important;
-                        padding: 12px !important;
+
+                    /* Grid de Especificações Compacto */
+                    .spec-grid {
+                        display: grid;
+                        grid-template-columns: repeat(2, 1fr);
+                        gap: 10px;
+                        margin-bottom: 20px;
+                    }
+                    .spec-item {
+                        background: #ffffff;
+                        padding: 12px;
+                        border-radius: 10px;
+                        border: 1px solid #e2e8f0;
+                        text-align: center;
+                        font-weight: 600;
+                        color: #181e29;
+                        font-size: 0.95rem;
+                    }
+
+                    /* Botão Flutuante WhatsApp */
+                    .whatsapp-float {
+                        position: fixed;
+                        bottom: 20px;
+                        right: 20px;
+                        background-color: #25d366;
+                        color: white !important;
+                        border-radius: 50px;
+                        padding: 12px 20px;
+                        font-weight: bold;
+                        font-size: 16px;
+                        box-shadow: 0px 4px 12px rgba(0,0,0,0.3);
+                        z-index: 9999;
+                        text-decoration: none !important;
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
                     }
                 </style>
                 """,
                 unsafe_allow_html=True
             )
             
+            # Cabeçalho
             if os.path.exists("logo.png"):
-                st.image("logo.png", width=220)
+                st.image("logo.png", width=180)
             else:
-                st.markdown(f"<h2 style='color:{COR_DOURADO};'>MENDES & SOARES</h2>", unsafe_allow_html=True)
+                st.markdown(f"<h2 style='color:{COR_DOURADO}; margin-bottom:0;'>MENDES & SOARES</h2>", unsafe_allow_html=True)
                 st.caption("Engenharia e Imóveis")
 
-            st.title(f"🏠 {imovel_cli.get('tipo', 'Imóvel')} — {imovel_cli.get('bairro', 'Passos-MG')}")
-            st.caption(f"Código do Imóvel: **{imovel_cli.get('codigo_imovel')}** | Localização: Passos - MG")
+            st.title(f"{imovel_cli.get('tipo', 'Imóvel')} — {imovel_cli.get('bairro', 'Passos-MG')}")
+            st.caption(f"Código: **{imovel_cli.get('codigo_imovel')}** | Passos - MG")
             
             st.markdown(f'<div class="price-tag-client">R$ {float(imovel_cli.get("valor_venda", 0)):,.2f}</div>', unsafe_allow_html=True)
             
-            st.divider()
+            # --- GALERIA DE FOTOS COM SWIPE TOUCH (SWIPER.JS) ---
+            fotos_cli = imovel_cli.get("fotos_urls") or []
+            if fotos_cli:
+                slides_html = "".join([f'<div class="swiper-slide"><img src="{url}" style="width:100%; border-radius:12px; height:280px; object-fit:cover;"></div>' for url in fotos_cli])
+                
+                swiper_code = f"""
+                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+                <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+                
+                <div class="swiper mySwiper" style="width:100%; height:300px; padding-bottom:20px;">
+                  <div class="swiper-wrapper">
+                    {slides_html}
+                  </div>
+                  <div class="swiper-pagination"></div>
+                </div>
+
+                <script>
+                  var swiper = new Swiper(".mySwiper", {{
+                    pagination: {{ el: ".swiper-pagination", clickable: true }},
+                    loop: true,
+                  }});
+                </script>
+                """
+                components.html(swiper_code, height=310)
+            else:
+                st.info("Nenhuma foto cadastrada para este imóvel.")
+
+            # --- ESPECIFICAÇÕES EM GRID ---
+            st.markdown(f"""
+                <div class="spec-grid">
+                    <div class="spec-item">🛏️ {imovel_cli.get('quartos', 0)} Dormitórios</div>
+                    <div class="spec-item">🚿 {imovel_cli.get('suites', 0)} Suítes</div>
+                    <div class="spec-item">🚽 {imovel_cli.get('banheiros', 0)} Banheiros</div>
+                    <div class="spec-item">🚗 {imovel_cli.get('vagas_garagem', 0)} Vagas</div>
+                    {"<div class='spec-item'>📐 Lote: " + str(imovel_cli.get('area_terreno')) + " m²</div>" if imovel_cli.get('area_terreno') else ""}
+                    {"<div class='spec-item'>🏗️ Á. Const: " + str(imovel_cli.get('area_construida')) + " m²</div>" if imovel_cli.get('area_construida') else ""}
+                </div>
+            """, unsafe_allow_html=True)
+
+            # --- DESCRIÇÃO ---
+            st.subheader("📋 Descrição do Imóvel")
+            st.write(imovel_cli.get("descricao", "Sem descrição disponível."))
+
+            # --- BOTÃO FIXO FLUTUANTE DE WHATSAPP ---
+            msg_wsp = f"Olá! Vi o imóvel {imovel_cli.get('codigo_imovel')} ({imovel_cli.get('tipo')} no {imovel_cli.get('bairro')}) e gostaria de agendar uma visita!"
+            url_wsp = f"https://wa.me/5535998102465?text={urllib.parse.quote(msg_wsp)}"
+            
+            st.markdown(
+                f'<a href="{url_wsp}" target="_blank" class="whatsapp-float">'
+                f'📱 Agendar Visita no WhatsApp'
+                f'</a>',
+                unsafe_allow_html=True
+            )
+
+            st.stop()
+        else:
+            st.error("Imóvel não encontrado.")
+            st.stop()
+    except Exception as e:
+        st.error(f"Erro ao carregar dados do imóvel: {e}")
+        st.stop()
             
             # --- GALERIA INTERATIVA COM NAVEGAÇÃO DIRETA (FÁCIL NO CELULAR) ---
             fotos_cli = imovel_cli.get("fotos_urls") or []
