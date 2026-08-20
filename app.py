@@ -770,7 +770,7 @@ elif menu == "👥 Funil de Leads":
                         st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# 🎯 ABA 6: ENCONTRAR MATCHES
+# 🎯 ABA 6: ENCONTRAR MATCHES (MARCAÇÃO DE STATUS SUPER VISÍVEL)
 # ==========================================
 elif menu == "🎯 Encontrar Matches":
     leads_data = carregar_leads()
@@ -894,20 +894,35 @@ elif menu == "🎯 Encontrar Matches":
                             
                             st.link_button("📲 Enviar no WhatsApp do Lead", url_whatsapp, type="primary", use_container_width=True)
 
-                            opcoes_status = ["Não Enviado", "👁️ Visto", "❌ Sem Interesse", "📅 Visita Agendada"]
-                            idx_def = opcoes_status.index(status_atual) if status_atual in opcoes_status else 0
+                            # --- SELEÇÃO DE STATUS COM BOTÕES DESTACADOS E ÍCONE ✅ ---
+                            st.write("**Status da Interação:**")
                             
-                            novo_status_selecionado = st.radio(
-                                "Status de interação com o imóvel:",
-                                opcoes_status,
-                                index=idx_def,
-                                key=f"radio_st_{lead_id}_{cod_im}",
-                                horizontal=True
-                            )
+                            col1, col2, col3, col4 = st.columns(4)
                             
-                            if novo_status_selecionado != status_atual:
-                                registrar_status_imovel_lead_direto(lead, cod_im, novo_status_selecionado)
-                                st.rerun()
+                            opcoes = [
+                                ("Não Enviado", "⚪ Não Enviado", col1),
+                                ("👁️ Visto", "👁️ Visto", col2),
+                                ("❌ Sem Interesse", "❌ Sem Interesse", col3),
+                                ("📅 Visita Agendada", "📅 Visita Agendada", col4)
+                            ]
+
+                            for valor_chave, rotulo_original, col in opcoes:
+                                with col:
+                                    is_selected = (status_atual == valor_chave)
+                                    
+                                    # Se selecionado: ganha ícone ✅ e botão do tipo 'primary' (destacado)
+                                    label_btn = f"✅ {rotulo_original}" if is_selected else rotulo_original
+                                    type_btn = "primary" if is_selected else "secondary"
+                                    
+                                    if st.button(
+                                        label_btn,
+                                        key=f"btn_st_{lead_id}_{cod_im}_{valor_chave}",
+                                        type=type_btn,
+                                        use_container_width=True
+                                    ):
+                                        if not is_selected:
+                                            registrar_status_imovel_lead_direto(lead, cod_im, valor_chave)
+                                            st.rerun()
 
                             st.markdown('</div>', unsafe_allow_html=True)
 # ==========================================
