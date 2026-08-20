@@ -729,91 +729,92 @@ elif menu == "👥 Funil de Leads":
 
                         st.markdown('</div>', unsafe_allow_html=True)
 # ==========================================
-# 🎯 ABA 6: ENCONTRAR MATCHES (PRECISO)
+# 🎯 ABA 6: ENCONTRAR MATCHES (DESIGN EM LISTA)
 # ==========================================
 elif menu == "🎯 Encontrar Matches":
     leads_data = carregar_leads()
     imoveis_data = carregar_imoveis()
     
     st.title("🎯 Cruzamento de Dados (Matches)")
-    st.write("Cruzamento preciso considerando tolerância de +10% no valor e filtro por bairros de interesse.")
+    st.write("Selecione um lead na lista abaixo para expandir e visualizar os imóveis compatíveis (+10% de margem no valor e filtro por bairro).")
     st.divider()
 
-    # Seleção do Lead
-    opcoes_leads = {
-        f"{l.get('nome')} ({l.get('whatsapp')})": l 
-        for l in leads_data 
+    # Filtra apenas leads ativos
+    leads_ativos = [
+        l for l in leads_data 
         if MAPEAMENTO_STATUS.get(l.get('status'), l.get('status')) not in ['🟢 Já comprou (Fechado)', '🔴 Perdido/Inativo']
-    }
-    
-    if not opcoes_leads:
-        st.info("Nenhum lead ativo disponível para cruzamento.")
+    ]
+
+    if not leads_ativos:
+        st.info("Nenhum lead ativo encontrado para cruzamento.")
     else:
-        lead_sel = opcoes_leads[st.selectbox("Selecione o Lead:", list(opcoes_leads.keys()))]
-        lead_id = lead_sel.get('id')
-        
-        # 1. Ajuste de Valor (+10% de margem)
-        orc_lead = float(lead_sel.get('orcamento_maximo') or lead_sel.get('orcamento_max') or 0.0)
-        orc_max_com_margem = orc_lead * 1.10
-        
-        # 2. Tratamento dos Bairros de Interesse
-        bairros_raw = lead_sel.get('bairros_interesse', [])
-        if isinstance(bairros_raw, str):
-            bairros_interesse = [b.strip() for b in bairros_raw.split(",") if b.strip()]
-        elif isinstance(bairros_raw, list):
-            bairros_interesse = [b.strip() for b in bairros_raw if b.strip()]
-        else:
-            bairros_interesse = []
+        for lead in leads_ativos:
+            lead_id = lead.get('id')
+            nome_lead = lead.get('nome', 'Sem Nome')
+            wsp_lead = lead.get('whatsapp', 'Sem Telefone')
+            
+            # Orçamento +10%
+            orc_lead = float(lead.get('orcamento_maximo') or lead.get('orcamento_max') or 0.0)
+            orc_max_com_margem = orc_lead * 1.10
+            
+            # Bairros
+            bairros_raw = lead.get('bairros_interesse', [])
+            if isinstance(bairros_raw, str):
+                bairros_interesse = [b.strip() for b in bairros_raw.split(",") if b.strip()]
+            elif isinstance(bairros_raw, list):
+                bairros_interesse = [b.strip() for b in bairros_raw if b.strip()]
+            else:
+                bairros_interesse = []
 
-        # Exibição do Perfil do Lead
-        st.markdown(f"""
-        **Perfil do Lead:**
-        - **Orçamento Base:** R$ {orc_lead:,.2f} *(Considerando imóveis até R$ {orc_max_com_margem:,.2f} com +10%)*
-        - **Bairros de Interesse:** {", ".join(bairros_interesse) if bairros_interesse else "Todos os bairros"}
-        """)
-        st.divider()
-
-        # Filtragem Rigorosa dos Imóveis
-        matches = []
-        for im in imoveis_data:
-            if im.get('status', 'Disponível') != 'Disponível':
-                continue
-            
-            preco_imovel = float(im.get('valor_venda', 0.0))
-            bairro_imovel = im.get('bairro', '')
-            
-            # Validação de Valor (+10%)
-            valido_preco = preco_imovel <= orc_max_com_margem
-            
-            # Validação do Bairro (Exata ou Sem Restrição)
-            valido_bairro = (not bairros_interesse) or (bairro_imovel in bairros_interesse)
-            
-            if valido_preco and valido_bairro:
-                matches.append(im)
-
-        st.subheader(f"Imóveis Compatíveis Encontrados: {len(matches)}")
-        
-        if not matches:
-            st.warning("Nenhum imóvel disponível atende a estes critérios de valor e bairro para este cliente.")
-        else:
-            for match in matches:
-                cod_im = match.get('codigo_imovel')
-                link_match = f"{URL_BASE_APP}/?imovel={cod_im}"
-                valor_imovel = float(match.get('valor_venda', 0))
+            # Cruzamento com Imóveis Disponíveis
+            matches = []
+            for im in imoveis_data:
+                if im.get('status', 'Disponível') != 'Disponível':
+                    continue
                 
-                with st.container():
-                    st.markdown('<div class="stCard">', unsafe_allow_html=True)
-                    
-                    c_title, c_badge = st.columns([3, 1.2])
-                    with c_title:
-                        st.markdown(f"### {match.get('tipo')} — Cód: **{cod_im}**")
-                        st.write(f"📍 **Bairro:** {match.get('bairro')} | 🛏️ {match.get('quartos', 0)} qtos")
-                    with c_badge:
-                        st.markdown(f'<span class="price-badge">R$ {valor_imovel:,.2f}</span>', unsafe_allow_html=True)
-                    
-                    st.caption("🔗 Link formatado para enviar ao cliente no WhatsApp:")
-                    st.code(link_match, language="text")
-                    st.markdown('</div>', unsafe_allow_html=True)
+                preco_imovel = float(im.get('valor_venda', 0.0))
+                bairro_imovel = im.get('bairro', '')
+                
+                valido_preco = preco_imovel <= orc_max_com_margem
+                valido_bairro = (not bairros_interesse) or (bairro_imovel in bairros_interesse)
+                
+                if valido_preco and valido_bairro:
+                    matches.append(im)
+
+            # Card Resumido com Apenas o Nome e Botão para Abrir Matches
+            qnt_matches = len(matches)
+            badge_matches = f"🔥 {qnt_matches} imóvei(s) encontrado(s)" if qnt_matches > 0 else "⚪ Nenhum imóvel no perfil"
+            
+            with st.expander(f"👤 **{nome_lead}** — 📱 {wsp_lead} | ({badge_matches})"):
+                st.markdown(f"""
+                **Parâmetros de Busca do Cliente:**
+                - 💰 **Orçamento:** R$ {orc_lead:,.2f} *(Teto com +10%: R$ {orc_max_com_margem:,.2f})*
+                - 📍 **Bairros de Interesse:** {", ".join(bairros_interesse) if bairros_interesse else "Todos os bairros"}
+                """)
+                st.divider()
+
+                if not matches:
+                    st.warning("Nenhum imóvel atende aos critérios de valor e bairro informados para este cliente.")
+                else:
+                    st.subheader(f"🏠 Imóveis Compatíveis ({len(matches)})")
+                    for match in matches:
+                        cod_im = match.get('codigo_imovel')
+                        link_match = f"{URL_BASE_APP}/?imovel={cod_im}"
+                        valor_imovel = float(match.get('valor_venda', 0))
+                        
+                        with st.container():
+                            st.markdown('<div class="stCard">', unsafe_allow_html=True)
+                            
+                            c_title, c_badge = st.columns([3, 1.2])
+                            with c_title:
+                                st.markdown(f"### {match.get('tipo')} — Cód: **{cod_im}**")
+                                st.write(f"📍 **Bairro:** {match.get('bairro')} | 🛏️ {match.get('quartos', 0)} qtos | 🚗 {match.get('vagas_garagem', 0)} vagas")
+                            with c_badge:
+                                st.markdown(f'<span class="price-badge">R$ {valor_imovel:,.2f}</span>', unsafe_allow_html=True)
+                            
+                            st.caption("🔗 Link direto para enviar no WhatsApp do cliente:")
+                            st.code(link_match, language="text")
+                            st.markdown('</div>', unsafe_allow_html=True)
 # ==========================================
 # 📅 ABA 7: VISITAS AGENDADAS
 # ==========================================
