@@ -844,15 +844,14 @@ elif menu == "👥 Funil de Leads":
                                         st.markdown(f"🗓️ **{data_formatada}** | 👤 *{h.get('corretor', 'Sistema')}*")
                                         st.write(f"💬 {texto_nota}")
                                     
-                                    with col_btn:
-                                        if st.button("🗑️ Excluir", key=f"del_hist_{interacao_id}", type="secondary"):
-        try:
-            # Executa a exclusão no Supabase usando o ID correto
-            supabase.table("interacoes_leads").delete().eq("id", interacao_id).execute()
-            st.success("Anotação excluída!")
-            st.rerun()
-        except Exception as e:
-            st.error(f"Erro ao excluir: {e}")
+              with col_btn:
+            if st.button("🗑️ Excluir", key=f"del_hist_{interacao_id}", type="secondary"):
+                try:
+                    supabase.table("interacoes_leads").delete().eq("id", interacao_id).execute()
+                    st.success("Anotação excluída!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Erro ao excluir: {e}")
 
                                     st.divider()
 
