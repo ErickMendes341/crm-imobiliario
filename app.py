@@ -842,8 +842,7 @@ elif menu == "👥 Funil de Leads":
                                     col_info, col_btn = st.columns([4, 1])
                                     with col_info:
                                         st.markdown(f"🗓️ **{data_formatada}** | 👤 *{h.get('corretor', 'Sistema')}*")
-                                        st.write(f"💬 {texto_nota}")
-                                    
+                                        st.write(f"💬 {texto_nota}")                 
               with col_btn:
             if st.button("🗑️ Excluir", key=f"del_hist_{interacao_id}", type="secondary"):
                 try:
