@@ -713,12 +713,12 @@ elif menu == "👤 Novo Lead":
                     st.error(f"Erro ao salvar lead no banco de dados: {e}")
 
 # ==========================================
-# 👥 ABA 5: FUNIL DE LEADS (COM EDIÇÃO E EXCLUSÃO)
+# 👥 ABA 5: FUNIL DE LEADS (COM TEMPLATES & HISTÓRICO)
 # ==========================================
 elif menu == "👥 Funil de Leads":
     leads_data = carregar_leads()
     st.title("👥 Funil de Negociação de Leads")
-    st.write("Gerencie, edite e remova as informações dos seus clientes em tempo real.")
+    st.write("Gerencie seus clientes, envie mensagens personalizadas e acompanhe o histórico de interações.")
     st.divider()
 
     contagem_por_status = {status: 0 for status in STATUS_LEADS}
@@ -746,24 +746,10 @@ elif menu == "👥 Funil de Leads":
                     email_lead = lead.get('email', '')
                     orc_lead = float(lead.get('orcamento_maximo') or lead.get('orcamento_max') or 0.0)
                     obs_lead = lead.get('observacoes', '')
-                    
-                    # Tratamento dos bairros
-                    bairros_raw = lead.get('bairros_interesse', [])
-                    if isinstance(bairros_raw, str):
-                        bairros_lead = [b.strip() for b in bairros_raw.split(",") if b.strip()]
-                    elif isinstance(bairros_raw, list):
-                        bairros_lead = [b.strip() for b in bairros_raw if b.strip()]
-                    else:
-                        bairros_lead = []
 
-                    # Tratamento dos tipos de imóveis
-                    tipos_raw = lead.get('tipo_imovel', [])
-                    if isinstance(tipos_raw, str):
-                        tipos_lead = [t.strip() for t in tipos_raw.split(",") if t.strip()]
-                    elif isinstance(tipos_raw, list):
-                        tipos_lead = [t.strip() for t in tipos_raw if t.strip()]
-                    else:
-                        tipos_lead = []
+                    phone_clean = ''.join(filter(str.isdigit, str(whatsapp_lead)))
+                    if phone_clean and not phone_clean.startswith("55"):
+                        phone_clean = f"55{phone_clean}"
 
                     with st.container():
                         st.markdown('<div class="stCard">', unsafe_allow_html=True)
@@ -773,10 +759,6 @@ elif menu == "👥 Funil de Leads":
                             st.markdown(f"### **{nome_lead}**")
                             st.write(f"📱 **WhatsApp:** {whatsapp_lead} | 📧 **Email:** {email_lead if email_lead else 'Não informado'}")
                             st.write(f"💰 **Orçamento:** R$ {orc_lead:,.2f}")
-                            if tipos_lead:
-                                st.write(f"🏠 **Interesse:** {', '.join(tipos_lead)}")
-                            if bairros_lead:
-                                st.caption(f"📍 **Bairros:** {', '.join(bairros_lead)}")
                             if obs_lead:
                                 st.caption(f"📝 **Obs:** {obs_lead}")
 
@@ -789,7 +771,26 @@ elif menu == "👥 Funil de Leads":
                                 st.success("Status atualizado!")
                                 st.rerun()
 
-                        # Expander de Edição e Exclusão do Lead
+                        # --- TEMPLATES DE MENSAGENS PARA WHATSAPP ---
+                        with st.expander(f"💬 Enviar Mensagem Rápida via WhatsApp para {nome_lead}"):
+                            tipo_mensagem = st.radio(
+                                "Escolha o modelo de mensagem:",
+                                ["Boas-vindas / Apresentação", "Agendamento de Visita", "Follow-up de Proposta"],
+                                key=f"msg_tpl_{lead_id}",
+                                horizontal=True
+                            )
+
+                            if tipo_mensagem == "Boas-vindas / Apresentação":
+                                texto_msg = f"Olá {nome_lead}! Tudo bem? Sou da Mendes & Soares Engenharia e Imóveis. Encontrei algumas opções de imóveis dentro do seu orçamento de R$ {orc_lead:,.2f}. Podemos conversar sobre o que busca?"
+                            elif tipo_mensagem == "Agendamento de Visita":
+                                texto_msg = f"Olá {nome_lead}! Gostaria de agendar uma visita para conhecermos alguns imóveis que selecionei para você neste final de semana. Qual melhor horário para você?"
+                            else:
+                                texto_msg = f"Olá {nome_lead}! Passando para saber se teve a oportunidade de avaliar a proposta do imóvel que conversamos. Ficamos à disposição para esclarecer qualquer dúvida!"
+
+                            url_wsp_lead = f"https://wa.me/{phone_clean}?text={urllib.parse.quote(texto_msg)}"
+                            st.link_button("📲 Abrir Conversa no WhatsApp", url_wsp_lead, type="primary", use_container_width=True)
+
+                        # --- EDIÇÃO E EXCLUSÃO DO LEAD ---
                         with st.expander(f"✏️ Editar / 🗑️ Excluir Dados de {nome_lead}"):
                             with st.form(key=f"form_edit_lead_{lead_id}"):
                                 ed_col1, ed_col2 = st.columns(2)
@@ -799,16 +800,6 @@ elif menu == "👥 Funil de Leads":
                                     novo_email = st.text_input("E-mail", value=email_lead)
                                 with ed_col2:
                                     novo_orc = st.number_input("Orçamento Máx (R$)", value=orc_lead, step=10000.0)
-                                    novos_tipos = st.multiselect(
-                                        "Tipos de Imóvel",
-                                        OPCOES_TIPO_IMOVEL,
-                                        default=[t for t in tipos_lead if t in OPCOES_TIPO_IMOVEL]
-                                    )
-                                    novos_bairros = st.multiselect(
-                                        "Bairros de Interesse",
-                                        BAIRROS_PASSOS,
-                                        default=[b for b in bairros_lead if b in BAIRROS_PASSOS]
-                                    )
                                 
                                 novas_obs = st.text_area("Observações", value=obs_lead)
 
@@ -820,8 +811,6 @@ elif menu == "👥 Funil de Leads":
                                         "whatsapp": novo_wsp,
                                         "email": novo_email,
                                         "orcamento_maximo": float(novo_orc),
-                                        "tipo_imovel": novos_tipos,
-                                        "bairros_interesse": novos_bairros,
                                         "observacoes": novas_obs
                                     }
                                     supabase.table("leads").update(dados_atualizados).eq("id", lead_id).execute()
@@ -831,12 +820,8 @@ elif menu == "👥 Funil de Leads":
 
                             st.divider()
                             st.markdown("##### ⚠️ Zona de Exclusão")
-                            col_del1, col_del2 = st.columns([3, 1])
-                            with col_del1:
-                                st.caption("Esta ação exclui permanentemente o lead do banco de dados e não pode ser desfeita.")
-                            with col_del2:
-                                if st.button("🗑️ Excluir Lead", key=f"btn_del_lead_{lead_id}", type="secondary", use_container_width=True):
-                                    excluir_lead(lead_id)
+                            if st.button("🗑️ Excluir Lead Definitivamente", key=f"btn_del_lead_{lead_id}", type="secondary", use_container_width=True):
+                                excluir_lead(lead_id)
 
                         st.markdown('</div>', unsafe_allow_html=True)
 
