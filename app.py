@@ -632,11 +632,12 @@ elif "Novo Lead" in menu:
                     st.error(f"Erro ao salvar lead: {e}")
 
 # ==========================================
-# 👥 ABA 5: FUNIL DE LEADS
+# 👥 ABA 5: FUNIL DE LEADS (COM EDIÇÃO)
 # ==========================================
 elif menu == "👥 Funil de Leads":
     leads_data = carregar_leads()
     st.title("👥 Funil de Negociação de Leads")
+    st.write("Gerencie e edite as informações dos seus clientes em tempo real.")
     st.divider()
 
     contagem_por_status = {status: 0 for status in STATUS_LEADS}
@@ -659,21 +660,74 @@ elif menu == "👥 Funil de Leads":
             else:
                 for lead in leads_da_aba:
                     lead_id = lead.get('id')
+                    nome_lead = lead.get('nome', '')
+                    whatsapp_lead = lead.get('whatsapp', '')
+                    email_lead = lead.get('email', '')
+                    orc_lead = float(lead.get('orcamento_maximo') or lead.get('orcamento_max') or 0.0)
+                    obs_lead = lead.get('observacoes', '')
+                    
+                    # Tratamento dos bairros para exibição e edição
+                    bairros_raw = lead.get('bairros_interesse', [])
+                    if isinstance(bairros_raw, str):
+                        bairros_lead = [b.strip() for b in bairros_raw.split(",") if b.strip()]
+                    elif isinstance(bairros_raw, list):
+                        bairros_lead = [b.strip() for b in bairros_raw if b.strip()]
+                    else:
+                        bairros_lead = []
+
                     with st.container():
                         st.markdown('<div class="stCard">', unsafe_allow_html=True)
                         c1, c2 = st.columns([2.5, 1.5])
+                        
                         with c1:
-                            st.markdown(f"**{lead.get('nome')}** | 📱 {lead.get('whatsapp')}")
-                            st.caption(f"💰 R$ {float(lead.get('orcamento_maximo', 0)):,.2f}")
+                            st.markdown(f"### **{nome_lead}**")
+                            st.write(f"📱 **WhatsApp:** {whatsapp_lead} | 📧 **Email:** {email_lead if email_lead else 'Não informado'}")
+                            st.write(f"💰 **Orçamento:** R$ {orc_lead:,.2f}")
+                            if bairros_lead:
+                                st.caption(f"📍 **Bairros:** {', '.join(bairros_lead)}")
+                            if obs_lead:
+                                st.caption(f"📝 **Obs:** {obs_lead}")
+
                         with c2:
                             idx_atual = STATUS_LEADS.index(status_original) if status_original in STATUS_LEADS else 0
-                            novo_st = st.selectbox("Mover para:", STATUS_LEADS, index=idx_atual, key=f"f_move_{lead_id}")
+                            novo_st = st.selectbox("Mover Etapa:", STATUS_LEADS, index=idx_atual, key=f"f_move_{lead_id}")
                             if novo_st != status_original:
                                 supabase.table("leads").update({"status": novo_st}).eq("id", lead_id).execute()
                                 limpar_cache()
+                                st.success("Status atualizado!")
                                 st.rerun()
-                        st.markdown('</div>', unsafe_allow_html=True)
 
+                        # Expander de Edição do Lead
+                        with st.expander(f"✏️ Editar Dados de {nome_lead}"):
+                            with st.form(key=f"form_edit_lead_{lead_id}"):
+                                ed_col1, ed_col2 = st.columns(2)
+                                with ed_col1:
+                                    novo_nome = st.text_input("Nome", value=nome_lead)
+                                    novo_wsp = st.text_input("WhatsApp", value=whatsapp_lead)
+                                    novo_email = st.text_input("E-mail", value=email_lead)
+                                with ed_col2:
+                                    novo_orc = st.number_input("Orçamento Máx (R$)", value=orc_lead, step=10000.0)
+                                    novos_bairros = st.multiselect("Bairros de Interesse", BAIRROS_PASSOS, default=[b for b in bairros_lead if b in BAIRROS_PASSOS])
+                                
+                                novas_obs = st.text_area("Observações", value=obs_lead)
+
+                                btn_salvar_lead = st.form_submit_button("💾 Salvar Alterações", type="primary", use_container_width=True)
+                                
+                                if btn_salvar_lead:
+                                    dados_atualizados = {
+                                        "nome": novo_nome,
+                                        "whatsapp": novo_wsp,
+                                        "email": novo_email,
+                                        "orcamento_maximo": float(novo_orc),
+                                        "bairros_interesse": novos_bairros,
+                                        "observacoes": novas_obs
+                                    }
+                                    supabase.table("leads").update(dados_atualizados).eq("id", lead_id).execute()
+                                    limpar_cache()
+                                    st.success("Lead atualizado com sucesso!")
+                                    st.rerun()
+
+                        st.markdown('</div>', unsafe_allow_html=True)
 # ==========================================
 # 🎯 ABA 6: ENCONTRAR MATCHES (PRECISO)
 # ==========================================
