@@ -328,21 +328,20 @@ def gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor):
 
     client = genai.Client(api_key=api_key)
     
-    # Tenta até 3 vezes caso ocorra oscilação de rede ou pico de demanda (Erro 503)
+    # Tenta até 3 vezes em caso de indisponibilidade de servidor (503 / alta demanda)
     tentativas = 3
     for tentativa in range(tentativas):
         try:
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3.6-flash",
                 contents=prompt,
             )
             return response.text
         except Exception as e:
             if ("503" in str(e) or "UNAVAILABLE" in str(e)) and tentativa < tentativas - 1:
-                time.sleep(2)  # Espera 2 segundos antes de tentar novamente
+                time.sleep(2)  # Aguarda 2 segundos antes de tentar novamente
                 continue
             return f"Erro ao comunicar com a API do Gemini: {str(e)}"
-
 def calcular_total_matches(imoveis, leads):
     total = 0
     leads_ativos = [l for l in leads if MAPEAMENTO_STATUS.get(l.get('status'), l.get('status')) not in ['🟢 Já comprou (Fechado)', '🔴 Perdido/Inativo']]
