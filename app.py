@@ -20,8 +20,12 @@ CONFIG_EMPRESA = {
 # ==========================================
 # 🔐 SEGURANÇA E CHAVES (SECRETS)
 # ==========================================
-SUPABASE_URL = st.secrets.get("SUPABASE_URL", os.environ.get("SUPABASE_URL", "https://dsnamhmffvjxcfqtlzet.supabase.co"))
-SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", os.environ.get("SUPABASE_KEY", "sb_publishable_XVO9PLxpxWBnr32_UYt_UA_HSdspi16"))
+SUPABASE_URL = st.secrets.get("SUPABASE_URL", os.environ.get("SUPABASE_URL", ""))
+SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", os.environ.get("SUPABASE_KEY", ""))
+GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
+
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
 
 @st.cache_resource
 def init_supabase():
