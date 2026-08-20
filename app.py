@@ -846,12 +846,13 @@ elif menu == "👥 Funil de Leads":
                                     
                                     with col_btn:
                                         if st.button("🗑️ Excluir", key=f"del_hist_{interacao_id}", type="secondary"):
-                                            try:
-                                                supabase.table("interacoes_leads").delete().eq("id", interacao_id).execute()
-                                                st.success("Anotação excluída!")
-                                                st.rerun()
-                                            except Exception as e:
-                                                st.error(f"Erro ao excluir: {e}")
+        try:
+            # Executa a exclusão no Supabase usando o ID correto
+            supabase.table("interacoes_leads").delete().eq("id", interacao_id).execute()
+            st.success("Anotação excluída!")
+            st.rerun()
+        except Exception as e:
+            st.error(f"Erro ao excluir: {e}")
 
                                     st.divider()
 
