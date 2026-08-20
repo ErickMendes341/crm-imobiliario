@@ -4,6 +4,15 @@ import urllib.parse
 import os
 from datetime import date, datetime
 
+def excluir_lead(lead_id):
+    try:
+        supabase.table("leads").delete().eq("id", lead_id).execute()
+        limpar_cache()
+        st.success("Lead excluído com sucesso!")
+        st.rerun()
+    except Exception as e:
+        st.error(f"Erro ao excluir lead: {e}")
+        
 # --- IMPORTAÇÃO PARA IA ---
 from google import genai
 def registrar_status_imovel_lead_direto(lead, codigo_imovel, novo_status):
@@ -631,45 +640,55 @@ elif menu == "📝 Novo Imóvel":
             st.error(f"Erro ao salvar imóvel: {err}")
 
 # ==========================================
-# 👤 ABA 4: NOVO LEAD
+# 👥 ABA: NOVO LEAD (COM MULTISELECT DE IMÓVEIS)
 # ==========================================
-elif "Novo Lead" in menu:
+elif menu == "👥 Novo Lead":
     st.title("➕ Cadastrar Novo Lead")
-    st.divider()
-
+    
     with st.form("form_novo_lead", clear_on_submit=True):
-        col1, col2 = st.columns(2)
-        with col1:
-            nome = st.text_input("Nome do Cliente *")
-            whatsapp = st.text_input("WhatsApp / Telefone *")
+        nome = st.text_input("Nome do Lead*")
+        col_c1, col_c2 = st.columns(2)
+        with col_c1:
+            whatsapp = st.text_input("WhatsApp (ex: 35999999999)*")
+        with col_c2:
             email = st.text_input("E-mail")
-            tipo_imovel = st.multiselect("Tipo Preferido", ["Casa", "Apartamento", "Terreno", "Chácara"], default=["Casa"])
-
-        with col2:
-            num_quartos = st.number_input("Mín. Quartos", min_value=0, max_value=10, value=2)
-            orcamento = st.number_input("Orçamento Máx (R$)", min_value=0.0, value=300000.0, step=10000.0)
-            e_financiamento = st.radio("Financiamento Bancário?", ["Sim", "Não"], horizontal=True)
-
-        bairros = st.multiselect("Bairros de Interesse", BAIRROS_PASSOS)
-        status_inicial = st.selectbox("Status Inicial", STATUS_LEADS)
-        observacoes = st.text_area("Observações")
-
-        if st.form_submit_button("💾 Salvar Lead", use_container_width=True):
-            if not nome or not whatsapp:
-                st.error("Preencha Nome e WhatsApp.")
+            
+        orcamento = st.number_input("Orçamento Máximo (R$)", min_value=0.0, step=10000.0, format="%.2f")
+        
+        # PERMITE ESCOLHER CASA E APARTAMENTO JUNTOS
+        tipos_imovel = st.multiselect(
+            "Tipos de Imóvel de Interesse*",
+            ["Casa", "Apartamento", "Terreno", "Sobrado", "Comercial", "Chácara/Sítio"],
+            default=["Casa"]
+        )
+        
+        bairros = st.text_input("Bairros de Interesse (separados por vírgula)", placeholder="Ex: Centro, Vilagio D'Italia, Jardins")
+        
+        submitted = st.form_submit_button("💾 Salvar Lead", type="primary", use_container_width=True)
+        
+        if submitted:
+            if not nome or not whatsapp or not tipos_imovel:
+                st.error("Por favor, preencha os campos obrigatórios (*).")
             else:
+                bairros_lista = [b.strip() for b in bairros.split(",") if b.strip()]
+                
+                # Salva os tipos selecionados como lista/string
+                dados_lead = {
+                    "nome": nome,
+                    "whatsapp": whatsapp,
+                    "email": email,
+                    "orcamento_maximo": orcamento,
+                    "tipo_imovel": tipos_imovel,  # Salva múltiplos tipos selecionados
+                    "bairros_interesse": bairros_lista,
+                    "status": "🔵 Em busca (Frio)"
+                }
+                
                 try:
-                    novo_lead = {
-                        "nome": nome, "whatsapp": whatsapp, "email": email, "tipo_imovel": tipo_imovel,
-                        "quartos_min": int(num_quartos), "orcamento_maximo": float(orcamento),
-                        "financiamento": e_financiamento, "bairros_interesse": bairros,
-                        "status": status_inicial, "observacoes": observacoes
-                    }
-                    supabase.table("leads").insert(novo_lead).execute()
+                    supabase.table("leads").insert(dados_lead).execute()
                     limpar_cache()
-                    st.success(f"Lead **{nome}** cadastrado!")
+                    st.success(f"Lead **{nome}** cadastrado com sucesso!")
                 except Exception as e:
-                    st.error(f"Erro ao salvar lead: {e}")
+                    st.error(f"Erro ao salvar lead no banco de dados: {e}")
 
 # ==========================================
 # 👥 ABA 5: FUNIL DE LEADS (COM EDIÇÃO)
