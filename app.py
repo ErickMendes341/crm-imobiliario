@@ -752,7 +752,7 @@ elif menu == "👥 Funil de Leads":
 
                         st.markdown('</div>', unsafe_allow_html=True)
 # ==========================================
-# 🎯 ABA 6: ENCONTRAR MATCHES (COM HISTÓRICO E STATUS)
+# 🎯 ABA 6: ENCONTRAR MATCHES (MENSAGEM COM ALGORITMO E PROBABILIDADE)
 # ==========================================
 elif menu == "🎯 Encontrar Matches":
     leads_data = carregar_leads()
@@ -760,10 +760,10 @@ elif menu == "🎯 Encontrar Matches":
     interacoes_status = carregar_status_imoveis_leads()
     
     st.title("🎯 Cruzamento de Dados (Matches)")
-    st.write("Gerencie as sugestões de imóveis e acompanhe a resposta do cliente (Visto, Sem Interesse ou Visita Agendada).")
+    st.write("Gerencie as sugestões de imóveis e acompanhe a resposta do cliente.")
     st.divider()
 
-    # Mapeamento rápido de interações: (lead_id, codigo_imovel) -> status_interacao
+    # Mapeamento de interações
     mapa_status = {
         (item.get('lead_id'), item.get('codigo_imovel')): item.get('status_interacao')
         for item in interacoes_status
@@ -851,28 +851,21 @@ elif menu == "🎯 Encontrar Matches":
                         cod_im = match.get('codigo_imovel')
                         valor_imovel = float(match.get('valor_venda', 0))
                         
-                        # Status atual de interação deste imóvel para este lead
-                        status_interacao_atual = mapa_status.get((lead_id, cod_im), "Não Enviado")
+                        status_atual = mapa_status.get((lead_id, cod_im), "Não Enviado")
                         
-                        msg_whatsapp = f"Olá {nome_lead}, eu encontrei um imóvel que encaixa no seu perfil, posso te enviar o link com as fotos e agendarmos uma visita?"
+                        # Mensagem atualizada com probabilidade e menção ao algoritmo
+                        msg_whatsapp = (
+                            f"Olá {nome_lead}, nosso algoritmo identificou que este imóvel tem {prob}% de probabilidade "
+                            f"de se encaixar perfeitamente no seu perfil e recomenda esta opção para você! "
+                            f"Posso te enviar o link com as fotos e agendarmos uma visita?"
+                        )
+                        
                         url_whatsapp = f"https://wa.me/{phone_clean}?text={urllib.parse.quote(msg_whatsapp)}"
 
                         with st.container():
                             st.markdown('<div class="stCard">', unsafe_allow_html=True)
                             
-                            c_top1, c_top2 = st.columns([2.5, 1.5])
-                            with c_top1:
-                                st.markdown(f"🎯 **{prob}% de probabilidade para este cliente**")
-                            with c_top2:
-                                # Badge com visualização do status do imóvel para este lead
-                                if status_interacao_atual == "Visto":
-                                    st.info("👁️ Imóvel Visto pelo Lead")
-                                elif status_interacao_atual == "Sem Interesse":
-                                    st.error("❌ Lead Não Teve Interesse")
-                                elif status_interacao_atual == "Visita Agendada":
-                                    st.success("📅 Visita Agendada")
-                                else:
-                                    st.caption("⚪ Ainda Não Enviado")
+                            st.markdown(f"🎯 **{prob}% de probabilidade para este cliente**")
                             
                             c_title, c_badge = st.columns([3, 1.2])
                             with c_title:
@@ -883,22 +876,21 @@ elif menu == "🎯 Encontrar Matches":
                             
                             st.link_button("📲 Enviar no WhatsApp do Lead", url_whatsapp, type="primary", use_container_width=True)
 
-                            # Botões de marcação rápida de status
-                            st.caption("Alterar status deste imóvel para o cliente:")
-                            b_col1, b_col2, b_col3 = st.columns(3)
+                            # Status de Interação
+                            opcoes_status = ["Não Enviado", "👁️ Visto", "❌ Sem Interesse", "📅 Visita Agendada"]
+                            idx_def = opcoes_status.index(status_atual) if status_atual in opcoes_status else 0
                             
-                            with b_col1:
-                                if st.button("👁️ Marcar como Visto", key=f"btn_visto_{lead_id}_{cod_im}", use_container_width=True):
-                                    registrar_status_imovel_lead(lead_id, cod_im, "Visto")
-                                    st.rerun()
-                            with b_col2:
-                                if st.button("❌ Sem Interesse", key=f"btn_ninter_{lead_id}_{cod_im}", use_container_width=True):
-                                    registrar_status_imovel_lead(lead_id, cod_im, "Sem Interesse")
-                                    st.rerun()
-                            with b_col3:
-                                if st.button("📅 Visita Agendada", key=f"btn_visita_{lead_id}_{cod_im}", use_container_width=True):
-                                    registrar_status_imovel_lead(lead_id, cod_im, "Visita Agendada")
-                                    st.rerun()
+                            novo_status_selecionado = st.radio(
+                                "Status de interação com o imóvel:",
+                                opcoes_status,
+                                index=idx_def,
+                                key=f"radio_st_{lead_id}_{cod_im}",
+                                horizontal=True
+                            )
+                            
+                            if novo_status_selecionado != status_atual:
+                                registrar_status_imovel_lead(lead_id, cod_im, novo_status_selecionado)
+                                st.rerun()
 
                             st.markdown('</div>', unsafe_allow_html=True)
 # ==========================================
