@@ -830,7 +830,7 @@ elif menu == "👥 Funil de Leads":
                         st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# 🎯 ABA 6: ENCONTRAR MATCHES (Margem de 15% para cima e para baixo)
+# 🎯 ABA 6: ENCONTRAR MATCHES (BLINDADO E CORRIGIDO)
 # ==========================================
 elif menu == "🎯 Encontrar Matches":
     leads_data = carregar_leads()
@@ -853,6 +853,7 @@ elif menu == "🎯 Encontrar Matches":
             nome_lead = lead.get('nome', 'Sem Nome')
             wsp_lead = lead.get('whatsapp', '')
             
+            # --- TRATAMENTO SEGURO DE INTERAÇÕES ---
             interacoes_lead = lead.get('interacoes_imoveis') or {}
             if isinstance(interacoes_lead, str):
                 import json
@@ -861,57 +862,74 @@ elif menu == "🎯 Encontrar Matches":
                 except Exception:
                     interacoes_lead = {}
             
-            phone_clean = ''.join(filter(str.isdigit, wsp_lead))
+            phone_clean = ''.join(filter(str.isdigit, str(wsp_lead)))
             if phone_clean and not phone_clean.startswith("55"):
                 phone_clean = f"55{phone_clean}"
 
-            orc_lead = float(lead.get('orcamento_maximo') or lead.get('orcamento_max') or 0.0)
-            
-            # --- DEFINIÇÃO DAS MARGENS DE +15% E -15% ---
-            orc_min_margem = orc_lead * 0.85  # Piso (-15%)
-            orc_max_margem = orc_lead * 1.15  # Teto (+15%)
-            
-            tipos_interesse = lead.get('tipo_imovel', [])
-            if isinstance(tipos_interesse, str):
-                tipos_interesse = [t.strip() for t in tipos_interesse.split(",") if t.strip()]
+            # --- TRATAMENTO SEGURO DE ORÇAMENTO ---
+            try:
+                orc_lead = float(lead.get('orcamento_maximo') or lead.get('orcamento_max') or 0.0)
+            except (ValueError, TypeError):
+                orc_lead = 0.0
 
+            # Margens de -15% e +15%
+            orc_min_margem = orc_lead * 0.85
+            orc_max_margem = orc_lead * 1.15 if orc_lead > 0 else float('inf')
+            
+            # --- TRATAMENTO SEGURO DE TIPOS DE IMOVEL ---
+            tipos_raw = lead.get('tipo_imovel', [])
+            if isinstance(tipos_raw, str):
+                # Limpa colchetes/aspas se tiver sido gravado como string de lista
+                limpo = tipos_raw.replace("[", "").replace("]", "").replace("'", "").replace('"', "")
+                tipos_interesse = [t.strip().lower() for t in limpo.split(",") if t.strip()]
+            elif isinstance(tipos_raw, list):
+                tipos_interesse = [str(t).strip().lower() for t in tipos_raw if str(t).strip()]
+            else:
+                tipos_interesse = []
+
+            # --- TRATAMENTO SEGURO DE BAIRROS ---
             bairros_raw = lead.get('bairros_interesse', [])
             if isinstance(bairros_raw, str):
-                bairros_interesse = [b.strip() for b in bairros_raw.split(",") if b.strip()]
+                limpo_b = bairros_raw.replace("[", "").replace("]", "").replace("'", "").replace('"', "")
+                bairros_interesse = [b.strip().lower() for b in limpo_b.split(",") if b.strip()]
             elif isinstance(bairros_raw, list):
-                bairros_interesse = [b.strip() for b in bairros_raw if b.strip()]
+                bairros_interesse = [str(b).strip().lower() for b in bairros_raw if str(b).strip()]
             else:
                 bairros_interesse = []
 
             matches_com_score = []
             for im in imoveis_data:
-                if im.get('status', 'Disponível') != 'Disponível':
+                if str(im.get('status', 'Disponível')).strip().lower() != 'disponível':
                     continue
                 
-                preco_imovel = float(im.get('valor_venda', 0.0))
-                bairro_imovel = im.get('bairro', '')
-                tipo_imovel = im.get('tipo', '')
+                try:
+                    preco_imovel = float(im.get('valor_venda', 0.0))
+                except (ValueError, TypeError):
+                    preco_imovel = 0.0
+
+                bairro_imovel = str(im.get('bairro', '')).strip().lower()
+                tipo_imovel = str(im.get('tipo', '')).strip().lower()
                 
-                # Validação da faixa de preço: entre -15% e +15% do orçamento
-                valido_preco = (preco_imovel >= orc_min_margem) and (preco_imovel <= orc_max_margem)
+                # Regras de compatibilidade (Validação flexível)
+                valido_preco = (orc_lead == 0.0) or (orc_min_margem <= preco_imovel <= orc_max_margem)
                 valido_bairro = (not bairros_interesse) or (bairro_imovel in bairros_interesse)
                 
                 if valido_preco and valido_bairro:
                     score = 70.0
                     
-                    # Pontuação por preço:
+                    # Bonificação por Preço
                     if preco_imovel <= orc_lead:
-                        score += 15.0  # Fica dentro ou abaixo do orçamento nominal (respeitando o piso de -15%)
+                        score += 15.0
                     else:
-                        score += 5.0   # Excede o orçamento nominal, mas fica dentro dos +15% de margem
+                        score += 5.0
                         
-                    # Pontuação por tipo de imóvel:
+                    # Bonificação por Tipo de Imóvel
                     if tipos_interesse and tipo_imovel in tipos_interesse:
                         score += 10.0
                     elif not tipos_interesse:
                         score += 5.0
                         
-                    # Pontuação por bairro:
+                    # Bonificação por Bairro
                     if bairros_interesse and bairro_imovel in bairros_interesse:
                         score += 5.0
 
@@ -922,12 +940,26 @@ elif menu == "🎯 Encontrar Matches":
             qnt_matches = len(matches_com_score)
             badge_matches = f"🔥 {qnt_matches} imóvel(is) compatível(is)" if qnt_matches > 0 else "⚪ Nenhum imóvel no perfil"
             
+            # --- RENDERIZAÇÃO DA INTERFACE ---
             with st.expander(f"👤 **{nome_lead}** — 📱 {wsp_lead} | ({badge_matches})"):
+                # Recupera os textos originais para exibição amigável
+                bairros_exibicao = lead.get('bairros_interesse', [])
+                if isinstance(bairros_exibicao, list):
+                    bairros_str = ", ".join(bairros_exibicao)
+                else:
+                    bairros_str = str(bairros_exibicao).replace("[", "").replace("]", "").replace("'", "")
+
+                tipos_exibicao = lead.get('tipo_imovel', [])
+                if isinstance(tipos_exibicao, list):
+                    tipos_str = ", ".join(tipos_exibicao)
+                else:
+                    tipos_str = str(tipos_exibicao).replace("[", "").replace("]", "").replace("'", "")
+
                 st.markdown(f"""
                 **Parâmetros do Cliente:**
-                - 💰 **Orçamento:** R$ {orc_lead:,.2f} *(Faixa aceita ±15%: R$ {orc_min_margem:,.2f} até R$ {orc_max_margem:,.2f})*
-                - 📍 **Bairros:** {", ".join(bairros_interesse) if bairros_interesse else "Todos os bairros"}
-                - 🏠 **Tipos:** {", ".join(tipos_interesse) if tipos_interesse else "Todos os tipos"}
+                - 💰 **Orçamento:** R$ {orc_lead:,.2f} *(Faixa ±15%: R$ {orc_min_margem:,.2f} até R$ {orc_max_margem:,.2f})*
+                - 📍 **Bairros:** {bairros_str if bairros_str else "Todos os bairros"}
+                - 🏠 **Tipos:** {tipos_str if tipos_str else "Todos os tipos"}
                 """)
                 st.divider()
 
@@ -938,7 +970,6 @@ elif menu == "🎯 Encontrar Matches":
                     for prob, match in matches_com_score:
                         cod_im = match.get('codigo_imovel')
                         valor_imovel = float(match.get('valor_venda', 0))
-                        
                         status_atual = interacoes_lead.get(cod_im, "Não Enviado")
                         
                         msg_whatsapp = (
@@ -951,7 +982,6 @@ elif menu == "🎯 Encontrar Matches":
 
                         with st.container():
                             st.markdown('<div class="stCard">', unsafe_allow_html=True)
-                            
                             st.markdown(f"🎯 **{prob}% de probabilidade para este cliente**")
                             
                             c_title, c_badge = st.columns([3, 1.2])
