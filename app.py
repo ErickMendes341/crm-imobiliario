@@ -752,22 +752,37 @@ elif menu == "👥 Funil de Leads":
 
                         st.markdown('</div>', unsafe_allow_html=True)
 # ==========================================
-# 🎯 ABA 6: ENCONTRAR MATCHES (MENSAGEM COM ALGORITMO E PROBABILIDADE)
+# 📊 FUNÇÃO DE REGISTRO DIRETO NO LEAD
+# ==========================================
+def registrar_status_imovel_lead_direto(lead, codigo_imovel, novo_status):
+    try:
+        lead_id = lead.get('id')
+        interacoes = lead.get('interacoes_imoveis') or {}
+        if isinstance(interacoes, str):
+            import json
+            try:
+                interacoes = json.loads(interacoes)
+            except Exception:
+                interacoes = {}
+        
+        # Atualiza a interação do imóvel específico
+        interacoes[codigo_imovel] = novo_status
+        
+        supabase.table("leads").update({"interacoes_imoveis": interacoes}).eq("id", lead_id).execute()
+        limpar_cache()
+    except Exception as e:
+        st.error(f"Erro ao salvar status: {e}")
+
+# ==========================================
+# 🎯 ABA 6: ENCONTRAR MATCHES (SEM ERRO)
 # ==========================================
 elif menu == "🎯 Encontrar Matches":
     leads_data = carregar_leads()
     imoveis_data = carregar_imoveis()
-    interacoes_status = carregar_status_imoveis_leads()
     
     st.title("🎯 Cruzamento de Dados (Matches)")
     st.write("Gerencie as sugestões de imóveis e acompanhe a resposta do cliente.")
     st.divider()
-
-    # Mapeamento de interações
-    mapa_status = {
-        (item.get('lead_id'), item.get('codigo_imovel')): item.get('status_interacao')
-        for item in interacoes_status
-    }
 
     leads_ativos = [
         l for l in leads_data 
@@ -781,6 +796,15 @@ elif menu == "🎯 Encontrar Matches":
             lead_id = lead.get('id')
             nome_lead = lead.get('nome', 'Sem Nome')
             wsp_lead = lead.get('whatsapp', '')
+            
+            # Carrega o histórico de interações do lead
+            interacoes_lead = lead.get('interacoes_imoveis') or {}
+            if isinstance(interacoes_lead, str):
+                import json
+                try:
+                    interacoes_lead = json.loads(interacoes_lead)
+                except Exception:
+                    interacoes_lead = {}
             
             phone_clean = ''.join(filter(str.isdigit, wsp_lead))
             if phone_clean and not phone_clean.startswith("55"):
@@ -851,9 +875,9 @@ elif menu == "🎯 Encontrar Matches":
                         cod_im = match.get('codigo_imovel')
                         valor_imovel = float(match.get('valor_venda', 0))
                         
-                        status_atual = mapa_status.get((lead_id, cod_im), "Não Enviado")
+                        # Obtém o status específico deste imóvel para o lead
+                        status_atual = interacoes_lead.get(cod_im, "Não Enviado")
                         
-                        # Mensagem atualizada com probabilidade e menção ao algoritmo
                         msg_whatsapp = (
                             f"Olá {nome_lead}, nosso algoritmo identificou que este imóvel tem {prob}% de probabilidade "
                             f"de se encaixar perfeitamente no seu perfil e recomenda esta opção para você! "
@@ -889,7 +913,7 @@ elif menu == "🎯 Encontrar Matches":
                             )
                             
                             if novo_status_selecionado != status_atual:
-                                registrar_status_imovel_lead(lead_id, cod_im, novo_status_selecionado)
+                                registrar_status_imovel_lead_direto(lead, cod_im, novo_status_selecionado)
                                 st.rerun()
 
                             st.markdown('</div>', unsafe_allow_html=True)
