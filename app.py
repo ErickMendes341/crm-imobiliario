@@ -721,12 +721,12 @@ elif menu == "👤 Novo Lead":
                     st.error(f"Erro ao salvar lead no banco de dados: {e}")
 
 # ==========================================
-# 👥 ABA 5: FUNIL DE LEADS (COM EDIÇÃO E EXCLUSÃO)
+# 👥 ABA 5: FUNIL DE LEADS (COM HISTÓRICO)
 # ==========================================
 elif menu == "👥 Funil de Leads":
     leads_data = carregar_leads()
     st.title("👥 Funil de Negociação de Leads")
-    st.write("Gerencie, edite e remova as informações dos seus clientes em tempo real.")
+    st.write("Gerencie seus clientes, acompanhe o histórico de atendimento e atualize os status.")
     st.divider()
 
     contagem_por_status = {status: 0 for status in STATUS_LEADS}
@@ -796,6 +796,54 @@ elif menu == "👥 Funil de Leads":
                                 limpar_cache()
                                 st.success("Status atualizado!")
                                 st.rerun()
+
+                        # --- HISTÓRICO DE ATENDIMENTO ---
+                        with st.expander(f"📜 Histórico de Atendimentos ({nome_lead})"):
+                            # Buscar interações existentes
+                            historico = carregar_interacoes(lead_id)
+                            
+                            # Form para adicionar nova anotação
+                            with st.form(key=f"form_hist_{lead_id}", clear_on_submit=True):
+                                col_h1, col_h2 = st.columns([3, 1])
+                                with col_h1:
+                                    nova_nota = st.text_input("Nova anotação de atendimento", placeholder="Ex: Cliente gostou da casa no Centro, agendou retorno...")
+                                with col_h2:
+                                    corretor_nota = st.selectbox("Corretor", CORRETORES, key=f"corr_hist_{lead_id}")
+                                
+                                btn_add_hist = st.form_submit_button("➕ Registrar Anotação", type="primary", use_container_width=True)
+                                
+                                if btn_add_hist and nova_nota:
+                                    try:
+                                        supabase.table("interacoes_leads").insert({
+                                            "lead_id": lead_id,
+                                            "anotacao": nova_nota,
+                                            "corretor": corretor_nota
+                                        }).execute()
+                                        st.success("Anotação salva!")
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"Erro ao salvar histórico: {e}")
+
+                            st.divider()
+
+                            # Exibir lista de histórico
+                            if not historico:
+                                st.caption("Nenhum atendimento registrado até o momento.")
+                            else:
+                                for h in historico:
+                                    dt_str = h.get('data_hora', '')
+                                    if dt_str:
+                                        try:
+                                            dt_obj = datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
+                                            data_formatada = dt_obj.strftime("%d/%m/%Y às %H:%M")
+                                        except Exception:
+                                            data_formatada = dt_str
+                                    else:
+                                        data_formatada = "Data não informada"
+                                    
+                                    st.markdown(f"🗓️ **{data_formatada}** | 👤 *{h.get('corretor', 'Sistema')}*")
+                                    st.write(f"💬 {h.get('anotacao')}")
+                                    st.divider()
 
                         # Expander de Edição e Exclusão do Lead
                         with st.expander(f"✏️ Editar / 🗑️ Excluir Dados de {nome_lead}"):
