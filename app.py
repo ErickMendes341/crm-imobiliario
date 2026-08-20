@@ -838,12 +838,12 @@ elif menu == "👥 Funil de Leads":
                                             data_formatada = dt_str
                                     else:
                                         data_formatada = "Data não informada"
-                                    
-                                    col_info, col_btn = st.columns([4, 1])
-                                    with col_info:
-                                        st.markdown(f"🗓️ **{data_formatada}** | 👤 *{h.get('corretor', 'Sistema')}*")
-                                        st.write(f"💬 {texto_nota}")                 
-      with col_btn:
+col_info, col_btn = st.columns([4, 1])
+    with col_info:
+        st.markdown(f"📅 **{data_formatada}** | 👤 **{h.get('corretor', 'Sistema')}**")
+        st.write(f"💬 {texto_nota}")
+
+    with col_btn:
         if st.button("🗑️ Excluir", key=f"del_hist_{interacao_id}", type="secondary"):
             try:
                 supabase.table("interacoes_leads").delete().eq("id", interacao_id).execute()
