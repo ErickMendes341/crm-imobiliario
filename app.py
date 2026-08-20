@@ -328,7 +328,7 @@ def gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor):
 
     client = genai.Client(api_key=api_key)
     
-    # Tenta até 3 vezes em caso de indisponibilidade de servidor (503 / alta demanda)
+    # Tenta até 3 vezes em caso de indisponibilidade de servidor (503 / alta demanda)[cite: 3]
     tentativas = 3
     for tentativa in range(tentativas):
         try:
@@ -339,9 +339,10 @@ def gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor):
             return response.text
         except Exception as e:
             if ("503" in str(e) or "UNAVAILABLE" in str(e)) and tentativa < tentativas - 1:
-                time.sleep(2)  # Aguarda 2 segundos antes de tentar novamente
+                time.sleep(2)  # Aguarda 2 segundos antes de tentar novamente[cite: 3]
                 continue
             return f"Erro ao comunicar com a API do Gemini: {str(e)}"
+
 def calcular_total_matches(imoveis, leads):
     total = 0
     leads_ativos = [l for l in leads if MAPEAMENTO_STATUS.get(l.get('status'), l.get('status')) not in ['🟢 Já comprou (Fechado)', '🔴 Perdido/Inativo']]
@@ -832,6 +833,7 @@ elif menu == "👥 Funil de Leads":
                             else:
                                 for h in historico:
                                     dt_str = h.get('data_hora', '')
+                                    texto_nota = h.get('observacao') or h.get('anotacao') or 'Sem conteúdo'
                                     if dt_str:
                                         try:
                                             dt_obj = datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
@@ -842,7 +844,7 @@ elif menu == "👥 Funil de Leads":
                                         data_formatada = "Data não informada"
                                     
                                     st.markdown(f"🗓️ **{data_formatada}** | 👤 *{h.get('corretor', 'Sistema')}*")
-                                    st.write(f"💬 {h.get('anotacao')}")
+                                    st.write(f"💬 {texto_nota}")
                                     st.divider()
 
                         # Expander de Edição e Exclusão do Lead
