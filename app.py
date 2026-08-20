@@ -6,6 +6,23 @@ from datetime import date, datetime
 
 # --- IMPORTAÇÃO PARA IA ---
 from google import genai
+def registrar_status_imovel_lead_direto(lead, codigo_imovel, novo_status):
+    try:
+        lead_id = lead.get('id')
+        interacoes = lead.get('interacoes_imoveis') or {}
+        if isinstance(interacoes, str):
+            import json
+            try:
+                interacoes = json.loads(interacoes)
+            except Exception:
+                interacoes = {}
+        
+        interacoes[codigo_imovel] = novo_status
+        
+        supabase.table("leads").update({"interacoes_imoveis": interacoes}).eq("id", lead_id).execute()
+        limpar_cache()
+    except Exception as e:
+        st.error(f"Erro ao salvar status: {e}")
 # ==========================================
 # 📊 FUNÇÕES DE STATUS DO IMÓVEL PARA O LEAD
 # ==========================================
@@ -751,30 +768,9 @@ elif menu == "👥 Funil de Leads":
                                     st.rerun()
 
                         st.markdown('</div>', unsafe_allow_html=True)
-# ==========================================
-# 📊 FUNÇÃO DE REGISTRO DIRETO NO LEAD
-# ==========================================
-def registrar_status_imovel_lead_direto(lead, codigo_imovel, novo_status):
-    try:
-        lead_id = lead.get('id')
-        interacoes = lead.get('interacoes_imoveis') or {}
-        if isinstance(interacoes, str):
-            import json
-            try:
-                interacoes = json.loads(interacoes)
-            except Exception:
-                interacoes = {}
-        
-        # Atualiza a interação do imóvel específico
-        interacoes[codigo_imovel] = novo_status
-        
-        supabase.table("leads").update({"interacoes_imoveis": interacoes}).eq("id", lead_id).execute()
-        limpar_cache()
-    except Exception as e:
-        st.error(f"Erro ao salvar status: {e}")
 
 # ==========================================
-# 🎯 ABA 6: ENCONTRAR MATCHES (SEM ERRO)
+# 🎯 ABA 6: ENCONTRAR MATCHES
 # ==========================================
 elif menu == "🎯 Encontrar Matches":
     leads_data = carregar_leads()
@@ -797,7 +793,6 @@ elif menu == "🎯 Encontrar Matches":
             nome_lead = lead.get('nome', 'Sem Nome')
             wsp_lead = lead.get('whatsapp', '')
             
-            # Carrega o histórico de interações do lead
             interacoes_lead = lead.get('interacoes_imoveis') or {}
             if isinstance(interacoes_lead, str):
                 import json
@@ -875,7 +870,6 @@ elif menu == "🎯 Encontrar Matches":
                         cod_im = match.get('codigo_imovel')
                         valor_imovel = float(match.get('valor_venda', 0))
                         
-                        # Obtém o status específico deste imóvel para o lead
                         status_atual = interacoes_lead.get(cod_im, "Não Enviado")
                         
                         msg_whatsapp = (
@@ -900,7 +894,6 @@ elif menu == "🎯 Encontrar Matches":
                             
                             st.link_button("📲 Enviar no WhatsApp do Lead", url_whatsapp, type="primary", use_container_width=True)
 
-                            # Status de Interação
                             opcoes_status = ["Não Enviado", "👁️ Visto", "❌ Sem Interesse", "📅 Visita Agendada"]
                             idx_def = opcoes_status.index(status_atual) if status_atual in opcoes_status else 0
                             
