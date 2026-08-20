@@ -8,6 +8,16 @@ from datetime import date, datetime
 from google import genai
 
 # ==========================================
+# ⚙️ CONFIGURAÇÕES DA EMPRESA (CENTRALIZADAS)
+# ==========================================
+CONFIG_EMPRESA = {
+    "NOME": "Mendes & Soares | Engenharia e Imóveis",
+    "WHATSAPP_NUMERO": "5535998102465", # Número principal de atendimento
+    "MENSAGEM_PADRAO_CLIENTE": "Olá! Gostaria de agendar uma visita e obter mais informações sobre este imóvel.",
+    "CORRETORES": ["Erick Mendes", "Pedro Siqueira"]
+}
+
+# ==========================================
 # 📊 FUNÇÕES DO SUPABASE PARA LEADS E STATUS
 # ==========================================
 def excluir_lead(lead_id):
@@ -70,7 +80,7 @@ COR_CARD = "#ffffff"          # Fundo branco para os cards
 COR_TEXTO = "#101620"          # Texto escuro refinado
 
 # --- LISTA DE CORRETORES ---
-CORRETORES = ["Erick Mendes", "Pedro Siqueira"]
+CORRETORES = CONFIG_EMPRESA["CORRETORES"]
 
 # --- FUNIL DE VENDAS COM EMOJIS DE TEMPERATURA / STATUS ---
 STATUS_LEADS = [
@@ -95,7 +105,7 @@ OPCOES_TIPO_IMOVEL = ["Casa", "Apartamento", "Terreno", "Sobrado", "Cobertura", 
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
-    page_title="Mendes & Soares | Engenharia e Imóveis",
+    page_title=CONFIG_EMPRESA["NOME"],
     page_icon="🏠",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -285,7 +295,7 @@ if "imovel" in query_params:
         st.divider()
 
         msg_wsp = f"Olá! Vi o imóvel {imovel_cli.get('codigo_imovel')} ({imovel_cli.get('tipo')} no {imovel_cli.get('bairro')}) e gostaria de agendar uma visita!"
-        url_wsp = f"https://wa.me/5535998102465?text={urllib.parse.quote(msg_wsp)}"
+        url_wsp = f"https://wa.me/{CONFIG_EMPRESA['WHATSAPP_NUMERO']}?text={urllib.parse.quote(msg_wsp)}"
         
         st.link_button("📱 Agendar Visita via WhatsApp", url_wsp, use_container_width=True, type="primary")
 
@@ -436,7 +446,8 @@ with st.sidebar:
     )
 
     st.divider()
-    st.markdown("<p style='text-align: center; font-size: 0.9em; color: #94a3b8;'>📍 Passos - MG<br>📞 (35) 9 9810-2465</p>", unsafe_allow_html=True)
+    num_wsp_formatted = f"({CONFIG_EMPRESA['WHATSAPP_NUMERO'][2:4]}) {CONFIG_EMPRESA['WHATSAPP_NUMERO'][4:5]} {CONFIG_EMPRESA['WHATSAPP_NUMERO'][5:9]}-{CONFIG_EMPRESA['WHATSAPP_NUMERO'][9:]}"
+    st.markdown(f"<p style='text-align: center; font-size: 0.9em; color: #94a3b8;'>📍 Passos - MG<br>📞 {num_wsp_formatted}</p>", unsafe_allow_html=True)
 
 # ==========================================
 # 📊 ABA 1: DASHBOARD
@@ -830,7 +841,7 @@ elif menu == "👥 Funil de Leads":
                         st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# 🎯 ABA 6: ENCONTRAR MATCHES (BLINDADO E CORRIGIDO)
+# 🎯 ABA 6: ENCONTRAR MATCHES (UTILIZANDO st.segmented_control)
 # ==========================================
 elif menu == "🎯 Encontrar Matches":
     leads_data = carregar_leads()
@@ -879,7 +890,6 @@ elif menu == "🎯 Encontrar Matches":
             # --- TRATAMENTO SEGURO DE TIPOS DE IMOVEL ---
             tipos_raw = lead.get('tipo_imovel', [])
             if isinstance(tipos_raw, str):
-                # Limpa colchetes/aspas se tiver sido gravado como string de lista
                 limpo = tipos_raw.replace("[", "").replace("]", "").replace("'", "").replace('"', "")
                 tipos_interesse = [t.strip().lower() for t in limpo.split(",") if t.strip()]
             elif isinstance(tipos_raw, list):
@@ -910,26 +920,21 @@ elif menu == "🎯 Encontrar Matches":
                 bairro_imovel = str(im.get('bairro', '')).strip().lower()
                 tipo_imovel = str(im.get('tipo', '')).strip().lower()
                 
-                # Regras de compatibilidade (Validação flexível)
                 valido_preco = (orc_lead == 0.0) or (orc_min_margem <= preco_imovel <= orc_max_margem)
                 valido_bairro = (not bairros_interesse) or (bairro_imovel in bairros_interesse)
                 
                 if valido_preco and valido_bairro:
                     score = 70.0
-                    
-                    # Bonificação por Preço
                     if preco_imovel <= orc_lead:
                         score += 15.0
                     else:
                         score += 5.0
                         
-                    # Bonificação por Tipo de Imóvel
                     if tipos_interesse and tipo_imovel in tipos_interesse:
                         score += 10.0
                     elif not tipos_interesse:
                         score += 5.0
                         
-                    # Bonificação por Bairro
                     if bairros_interesse and bairro_imovel in bairros_interesse:
                         score += 5.0
 
@@ -940,9 +945,7 @@ elif menu == "🎯 Encontrar Matches":
             qnt_matches = len(matches_com_score)
             badge_matches = f"🔥 {qnt_matches} imóvel(is) compatível(is)" if qnt_matches > 0 else "⚪ Nenhum imóvel no perfil"
             
-            # --- RENDERIZAÇÃO DA INTERFACE ---
             with st.expander(f"👤 **{nome_lead}** — 📱 {wsp_lead} | ({badge_matches})"):
-                # Recupera os textos originais para exibição amigável
                 bairros_exibicao = lead.get('bairros_interesse', [])
                 if isinstance(bairros_exibicao, list):
                     bairros_str = ", ".join(bairros_exibicao)
@@ -970,7 +973,7 @@ elif menu == "🎯 Encontrar Matches":
                     for prob, match in matches_com_score:
                         cod_im = match.get('codigo_imovel')
                         valor_imovel = float(match.get('valor_venda', 0))
-                        status_atual = interacoes_lead.get(cod_im, "Não Enviado")
+                        status_atual = interacoes_lead.get(cod_im, "⚪ Não Enviado")
                         
                         msg_whatsapp = (
                             f"Olá {nome_lead}, nosso algoritmo identificou que este imóvel tem {prob}% de probabilidade "
@@ -993,31 +996,20 @@ elif menu == "🎯 Encontrar Matches":
                             
                             st.link_button("📲 Enviar no WhatsApp do Lead", url_whatsapp, type="primary", use_container_width=True)
 
-                            st.write("**Status da Interação:**")
-                            col1, col2, col3, col4 = st.columns(4)
+                            # --- UX: Seleção segmentada limpa usando st.segmented_control ---
+                            opcoes_status = ["⚪ Não Enviado", "👁️ Visto", "❌ Sem Interesse", "📅 Visita Agendada"]
                             
-                            opcoes = [
-                                ("Não Enviado", "⚪ Não Enviado", col1),
-                                ("👁️ Visto", "👁️ Visto", col2),
-                                ("❌ Sem Interesse", "❌ Sem Interesse", col3),
-                                ("📅 Visita Agendada", "📅 Visita Agendada", col4)
-                            ]
+                            novo_status = st.segmented_control(
+                                label="**Status da Interação:**",
+                                options=opcoes_status,
+                                default=status_atual if status_atual in opcoes_status else "⚪ Não Enviado",
+                                key=f"seg_{lead_id}_{cod_im}"
+                            )
 
-                            for valor_chave, rotulo_original, col in opcoes:
-                                with col:
-                                    is_selected = (status_atual == valor_chave)
-                                    label_btn = f"✅ {rotulo_original}" if is_selected else rotulo_original
-                                    type_btn = "primary" if is_selected else "secondary"
-                                    
-                                    if st.button(
-                                        label_btn,
-                                        key=f"btn_st_{lead_id}_{cod_im}_{valor_chave}",
-                                        type=type_btn,
-                                        use_container_width=True
-                                    ):
-                                        if not is_selected:
-                                            registrar_status_imovel_lead_direto(lead, cod_im, valor_chave)
-                                            st.rerun()
+                            if novo_status != status_atual:
+                                registrar_status_imovel_lead_direto(lead, cod_im, novo_status)
+                                st.toast(f"Status atualizado para: **{novo_status}**")
+                                st.rerun()
 
                             st.markdown('</div>', unsafe_allow_html=True)
 
