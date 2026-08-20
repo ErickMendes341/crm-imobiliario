@@ -305,6 +305,8 @@ if "imovel" in query_params:
         st.stop()
 
 # --- GERAR DESCRIÇÃO COM IA (GEMINI) ---
+import time
+
 def gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor):
     try:
         api_key = st.secrets["GEMINI_API_KEY"]
@@ -316,7 +318,7 @@ def gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor):
 
     prompt = f"""
     Você é um copywriter especialista no mercado imobiliário da Mendes & Soares Engenharia e Imóveis.
-    Escreva uma descrição comercial altamente atraente e facil leitura  para o seguinte imóvel:
+    Escreva uma descrição comercial altamente atraente para o seguinte imóvel:
     - Tipo: {tipo}
     - Bairro: {bairro} (Passos-MG)
     - Quartos: {quartos} (sendo {suites} suítes)
@@ -324,15 +326,22 @@ def gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor):
     - Valor: R$ {valor:,.2f}
     """
 
-    try:
-        client = genai.Client(api_key=api_key)
-        response = client.models.generate_content(
-            model="gemini-3.6-flash",
-            contents=prompt,
-        )
-        return response.text
-    except Exception as e:
-        return f"Erro ao comunicar com a API do Gemini: {str(e)}"
+    client = genai.Client(api_key=api_key)
+    
+    # Tenta até 3 vezes caso ocorra oscilação de rede ou pico de demanda (Erro 503)
+    tentativas = 3
+    for tentativa in range(tentativas):
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+            )
+            return response.text
+        except Exception as e:
+            if ("503" in str(e) or "UNAVAILABLE" in str(e)) and tentativa < tentativas - 1:
+                time.sleep(2)  # Espera 2 segundos antes de tentar novamente
+                continue
+            return f"Erro ao comunicar com a API do Gemini: {str(e)}"
 
 def calcular_total_matches(imoveis, leads):
     total = 0
