@@ -830,7 +830,7 @@ elif menu == "👥 Funil de Leads":
                         st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# 🎯 ABA 6: ENCONTRAR MATCHES (MARCAÇÃO VISÍVEL)
+# 🎯 ABA 6: ENCONTRAR MATCHES (Margem de 15% para cima e para baixo)
 # ==========================================
 elif menu == "🎯 Encontrar Matches":
     leads_data = carregar_leads()
@@ -866,7 +866,10 @@ elif menu == "🎯 Encontrar Matches":
                 phone_clean = f"55{phone_clean}"
 
             orc_lead = float(lead.get('orcamento_maximo') or lead.get('orcamento_max') or 0.0)
-            orc_max_com_margem = orc_lead * 1.10
+            
+            # --- DEFINIÇÃO DAS MARGENS DE +15% E -15% ---
+            orc_min_margem = orc_lead * 0.85  # Piso (-15%)
+            orc_max_margem = orc_lead * 1.15  # Teto (+15%)
             
             tipos_interesse = lead.get('tipo_imovel', [])
             if isinstance(tipos_interesse, str):
@@ -889,21 +892,26 @@ elif menu == "🎯 Encontrar Matches":
                 bairro_imovel = im.get('bairro', '')
                 tipo_imovel = im.get('tipo', '')
                 
-                valido_preco = preco_imovel <= orc_max_com_margem
+                # Validação da faixa de preço: entre -15% e +15% do orçamento
+                valido_preco = (preco_imovel >= orc_min_margem) and (preco_imovel <= orc_max_margem)
                 valido_bairro = (not bairros_interesse) or (bairro_imovel in bairros_interesse)
                 
                 if valido_preco and valido_bairro:
                     score = 70.0
+                    
+                    # Pontuação por preço:
                     if preco_imovel <= orc_lead:
-                        score += 15.0
+                        score += 15.0  # Fica dentro ou abaixo do orçamento nominal (respeitando o piso de -15%)
                     else:
-                        score += 5.0
+                        score += 5.0   # Excede o orçamento nominal, mas fica dentro dos +15% de margem
                         
+                    # Pontuação por tipo de imóvel:
                     if tipos_interesse and tipo_imovel in tipos_interesse:
                         score += 10.0
                     elif not tipos_interesse:
                         score += 5.0
                         
+                    # Pontuação por bairro:
                     if bairros_interesse and bairro_imovel in bairros_interesse:
                         score += 5.0
 
@@ -917,14 +925,14 @@ elif menu == "🎯 Encontrar Matches":
             with st.expander(f"👤 **{nome_lead}** — 📱 {wsp_lead} | ({badge_matches})"):
                 st.markdown(f"""
                 **Parâmetros do Cliente:**
-                - 💰 **Orçamento:** R$ {orc_lead:,.2f} *(Teto +10%: R$ {orc_max_com_margem:,.2f})*
+                - 💰 **Orçamento:** R$ {orc_lead:,.2f} *(Faixa aceita ±15%: R$ {orc_min_margem:,.2f} até R$ {orc_max_margem:,.2f})*
                 - 📍 **Bairros:** {", ".join(bairros_interesse) if bairros_interesse else "Todos os bairros"}
                 - 🏠 **Tipos:** {", ".join(tipos_interesse) if tipos_interesse else "Todos os tipos"}
                 """)
                 st.divider()
 
                 if not matches_com_score:
-                    st.warning("Nenhum imóvel atende aos critérios de valor e bairro para este cliente.")
+                    st.warning("Nenhum imóvel atende aos critérios de valor (±15%) e bairro para este cliente.")
                 else:
                     st.subheader(f"🏠 Imóveis Recomendados ({qnt_matches})")
                     for prob, match in matches_com_score:
