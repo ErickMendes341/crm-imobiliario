@@ -798,7 +798,7 @@ elif menu == "👥 Funil de Leads":
                                 st.success("Status atualizado!")
                                 st.rerun()
 
-                        # --- HISTÓRICO DE ATENDIMENTO ---
+                      # --- HISTÓRICO DE ATENDIMENTO ---
                         with st.expander(f"📜 Histórico de Atendimentos ({nome_lead})"):
                             # Buscar interações existentes
                             historico = carregar_interacoes(lead_id)
@@ -826,6 +826,40 @@ elif menu == "👥 Funil de Leads":
                                         st.error(f"Erro ao salvar histórico: {e}")
 
                             st.divider()
+
+                            # Exibir lista de histórico com botão de exclusão individual
+                            if not historico:
+                                st.caption("Nenhum atendimento registrado até o momento.")
+                            else:
+                                for h in historico:
+                                    interacao_id = h.get('id')
+                                    dt_str = h.get('data_hora', '')
+                                    texto_nota = h.get('observacao') or h.get('anotacao') or 'Sem conteúdo'
+                                    
+                                    if dt_str:
+                                        try:
+                                            dt_obj = datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
+                                            data_formatada = dt_obj.strftime("%d/%m/%Y às %H:%M")
+                                        except Exception:
+                                            data_formatada = dt_str
+                                    else:
+                                        data_formatada = "Data não informada"
+                                    
+                                    col_info, col_btn = st.columns([4, 1])
+                                    with col_info:
+                                        st.markdown(f"🗓️ **{data_formatada}** | 👤 *{h.get('corretor', 'Sistema')}*")
+                                        st.write(f"💬 {texto_nota}")
+                                    
+                                    with col_btn:
+                                        if st.button("🗑️ Excluir", key=f"del_hist_{interacao_id}", type="secondary"):
+                                            try:
+                                                supabase.table("interacoes_leads").delete().eq("id", interacao_id).execute()
+                                                st.success("Anotação excluída!")
+                                                st.rerun()
+                                            except Exception as e:
+                                                st.error(f"Erro ao excluir: {e}")
+
+                                    st.divider()
 
                             # Exibir lista de histórico
                             if not historico:
