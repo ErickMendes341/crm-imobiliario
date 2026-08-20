@@ -6,7 +6,30 @@ from datetime import date, datetime
 
 # --- IMPORTAÇÃO PARA IA ---
 from google import genai
+# ==========================================
+# 📊 FUNÇÕES DE STATUS DO IMÓVEL PARA O LEAD
+# ==========================================
+@st.cache_data(ttl=30)
+def carregar_status_imoveis_leads():
+    try:
+        res = supabase.table("imoveis_leads_status").select("*").execute()
+        return res.data if res.data else []
+    except Exception:
+        return []
 
+def registrar_status_imovel_lead(lead_id, codigo_imovel, novo_status):
+    try:
+        supabase.table("imoveis_leads_status").upsert(
+            {
+                "lead_id": lead_id,
+                "codigo_imovel": codigo_imovel,
+                "status_interacao": novo_status
+            },
+            on_conflict="lead_id,codigo_imovel"
+        ).execute()
+        limpar_cache()
+    except Exception as e:
+        st.error(f"Erro ao registrar status: {e}")
 # ==========================================
 # 🎨 PALETA DE CORES MENDES & SOARES
 # ==========================================
@@ -729,17 +752,23 @@ elif menu == "👥 Funil de Leads":
 
                         st.markdown('</div>', unsafe_allow_html=True)
 # ==========================================
-# 🎯 ABA 6: ENCONTRAR MATCHES (MENSAGEM AJUSTADA)
+# 🎯 ABA 6: ENCONTRAR MATCHES (COM HISTÓRICO E STATUS)
 # ==========================================
 elif menu == "🎯 Encontrar Matches":
     leads_data = carregar_leads()
     imoveis_data = carregar_imoveis()
+    interacoes_status = carregar_status_imoveis_leads()
     
     st.title("🎯 Cruzamento de Dados (Matches)")
-    st.write("Visualização simplificada de leads ativos com cálculo de compatibilidade e envio direto via WhatsApp.")
+    st.write("Gerencie as sugestões de imóveis e acompanhe a resposta do cliente (Visto, Sem Interesse ou Visita Agendada).")
     st.divider()
 
-    # Filtra apenas leads ativos
+    # Mapeamento rápido de interações: (lead_id, codigo_imovel) -> status_interacao
+    mapa_status = {
+        (item.get('lead_id'), item.get('codigo_imovel')): item.get('status_interacao')
+        for item in interacoes_status
+    }
+
     leads_ativos = [
         l for l in leads_data 
         if MAPEAMENTO_STATUS.get(l.get('status'), l.get('status')) not in ['🟢 Já comprou (Fechado)', '🔴 Perdido/Inativo']
@@ -753,21 +782,17 @@ elif menu == "🎯 Encontrar Matches":
             nome_lead = lead.get('nome', 'Sem Nome')
             wsp_lead = lead.get('whatsapp', '')
             
-            # Formatação do telefone para link wa.me (remove caracteres especiais)
             phone_clean = ''.join(filter(str.isdigit, wsp_lead))
             if phone_clean and not phone_clean.startswith("55"):
                 phone_clean = f"55{phone_clean}"
 
-            # Orçamento +10%
             orc_lead = float(lead.get('orcamento_maximo') or lead.get('orcamento_max') or 0.0)
             orc_max_com_margem = orc_lead * 1.10
             
-            # Tipos de imóvel de interesse
             tipos_interesse = lead.get('tipo_imovel', [])
             if isinstance(tipos_interesse, str):
                 tipos_interesse = [t.strip() for t in tipos_interesse.split(",") if t.strip()]
 
-            # Bairros
             bairros_raw = lead.get('bairros_interesse', [])
             if isinstance(bairros_raw, str):
                 bairros_interesse = [b.strip() for b in bairros_raw.split(",") if b.strip()]
@@ -776,7 +801,6 @@ elif menu == "🎯 Encontrar Matches":
             else:
                 bairros_interesse = []
 
-            # Cruzamento com Imóveis e Cálculo do % Match
             matches_com_score = []
             for im in imoveis_data:
                 if im.get('status', 'Disponível') != 'Disponível':
@@ -790,9 +814,7 @@ elif menu == "🎯 Encontrar Matches":
                 valido_bairro = (not bairros_interesse) or (bairro_imovel in bairros_interesse)
                 
                 if valido_preco and valido_bairro:
-                    # Algoritmo de cálculo de compatibilidade (%)
-                    score = 70.0  # Base por atender bairro e valor máximo
-                    
+                    score = 70.0
                     if preco_imovel <= orc_lead:
                         score += 15.0
                     else:
@@ -809,9 +831,7 @@ elif menu == "🎯 Encontrar Matches":
                     probabilidade = min(int(score), 99)
                     matches_com_score.append((probabilidade, im))
 
-            # Ordena imóveis da maior probabilidade para a menor
             matches_com_score.sort(key=lambda x: x[0], reverse=True)
-
             qnt_matches = len(matches_com_score)
             badge_matches = f"🔥 {qnt_matches} imóvel(is) compatível(is)" if qnt_matches > 0 else "⚪ Nenhum imóvel no perfil"
             
@@ -831,15 +851,28 @@ elif menu == "🎯 Encontrar Matches":
                         cod_im = match.get('codigo_imovel')
                         valor_imovel = float(match.get('valor_venda', 0))
                         
-                        # Mensagem exata conforme solicitado
-                        msg_whatsapp = f"Olá {nome_lead}, eu encontrei um imóvel que encaixa no seu perfil, posso te enviar o link com as fotos e agendarmos uma visita?"
+                        # Status atual de interação deste imóvel para este lead
+                        status_interacao_atual = mapa_status.get((lead_id, cod_im), "Não Enviado")
                         
+                        msg_whatsapp = f"Olá {nome_lead}, eu encontrei um imóvel que encaixa no seu perfil, posso te enviar o link com as fotos e agendarmos uma visita?"
                         url_whatsapp = f"https://wa.me/{phone_clean}?text={urllib.parse.quote(msg_whatsapp)}"
 
                         with st.container():
                             st.markdown('<div class="stCard">', unsafe_allow_html=True)
                             
-                            st.markdown(f"🎯 **Esse imóvel contém {prob}% de probabilidade para seu cliente**")
+                            c_top1, c_top2 = st.columns([2.5, 1.5])
+                            with c_top1:
+                                st.markdown(f"🎯 **{prob}% de probabilidade para este cliente**")
+                            with c_top2:
+                                # Badge com visualização do status do imóvel para este lead
+                                if status_interacao_atual == "Visto":
+                                    st.info("👁️ Imóvel Visto pelo Lead")
+                                elif status_interacao_atual == "Sem Interesse":
+                                    st.error("❌ Lead Não Teve Interesse")
+                                elif status_interacao_atual == "Visita Agendada":
+                                    st.success("📅 Visita Agendada")
+                                else:
+                                    st.caption("⚪ Ainda Não Enviado")
                             
                             c_title, c_badge = st.columns([3, 1.2])
                             with c_title:
@@ -849,7 +882,24 @@ elif menu == "🎯 Encontrar Matches":
                                 st.markdown(f'<span class="price-badge">R$ {valor_imovel:,.2f}</span>', unsafe_allow_html=True)
                             
                             st.link_button("📲 Enviar no WhatsApp do Lead", url_whatsapp, type="primary", use_container_width=True)
+
+                            # Botões de marcação rápida de status
+                            st.caption("Alterar status deste imóvel para o cliente:")
+                            b_col1, b_col2, b_col3 = st.columns(3)
                             
+                            with b_col1:
+                                if st.button("👁️ Marcar como Visto", key=f"btn_visto_{lead_id}_{cod_im}", use_container_width=True):
+                                    registrar_status_imovel_lead(lead_id, cod_im, "Visto")
+                                    st.rerun()
+                            with b_col2:
+                                if st.button("❌ Sem Interesse", key=f"btn_ninter_{lead_id}_{cod_im}", use_container_width=True):
+                                    registrar_status_imovel_lead(lead_id, cod_im, "Sem Interesse")
+                                    st.rerun()
+                            with b_col3:
+                                if st.button("📅 Visita Agendada", key=f"btn_visita_{lead_id}_{cod_im}", use_container_width=True):
+                                    registrar_status_imovel_lead(lead_id, cod_im, "Visita Agendada")
+                                    st.rerun()
+
                             st.markdown('</div>', unsafe_allow_html=True)
 # ==========================================
 # 📅 ABA 7: VISITAS AGENDADAS
