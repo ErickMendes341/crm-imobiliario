@@ -4,6 +4,12 @@ import urllib.parse
 import os
 from datetime import date, datetime
 
+# --- IMPORTAÇÃO PARA IA ---
+from google import genai
+
+# ==========================================
+# 📊 FUNÇÕES DO SUPABASE PARA LEADS E STATUS
+# ==========================================
 def excluir_lead(lead_id):
     try:
         supabase.table("leads").delete().eq("id", lead_id).execute()
@@ -12,9 +18,7 @@ def excluir_lead(lead_id):
         st.rerun()
     except Exception as e:
         st.error(f"Erro ao excluir lead: {e}")
-        
-# --- IMPORTAÇÃO PARA IA ---
-from google import genai
+
 def registrar_status_imovel_lead_direto(lead, codigo_imovel, novo_status):
     try:
         lead_id = lead.get('id')
@@ -32,9 +36,7 @@ def registrar_status_imovel_lead_direto(lead, codigo_imovel, novo_status):
         limpar_cache()
     except Exception as e:
         st.error(f"Erro ao salvar status: {e}")
-# ==========================================
-# 📊 FUNÇÕES DE STATUS DO IMÓVEL PARA O LEAD
-# ==========================================
+
 @st.cache_data(ttl=30)
 def carregar_status_imoveis_leads():
     try:
@@ -56,6 +58,7 @@ def registrar_status_imovel_lead(lead_id, codigo_imovel, novo_status):
         limpar_cache()
     except Exception as e:
         st.error(f"Erro ao registrar status: {e}")
+
 # ==========================================
 # 🎨 PALETA DE CORES MENDES & SOARES
 # ==========================================
@@ -87,6 +90,8 @@ MAPEAMENTO_STATUS = {
     "Já comprou": "🟢 Já comprou (Fechado)",
     "Perdido/Inativo": "🔴 Perdido/Inativo"
 }
+
+OPCOES_TIPO_IMOVEL = ["Casa", "Apartamento", "Terreno", "Sobrado", "Cobertura", "Comercial", "Chácara/Sítio"]
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
@@ -473,7 +478,7 @@ elif menu == "📋 Imóveis Cadastrados":
         
         with f_col1: busca_codigo = st.text_input("🔎 Código", placeholder="Ex: MS-001", key="busca_codigo")
         with f_col2: filtro_bairro_imovel = st.selectbox("📍 Bairro", ["Todos"] + BAIRROS_PASSOS, key="filtro_bairro_imovel")
-        with f_col3: filtro_tipo = st.selectbox("🏠 Tipo", ["Todos", "Casa", "Apartamento", "Terreno", "Sobrado", "Cobertura", "Sítio/Chácara"], key="filtro_tipo")
+        with f_col3: filtro_tipo = st.selectbox("🏠 Tipo", ["Todos"] + OPCOES_TIPO_IMOVEL, key="filtro_tipo")
         with f_col4: filtro_status = st.selectbox("📌 Status", ["Todos", "Disponível", "Vendido"], index=1, key="filtro_status")
         with f_col5:
             valores = [float(i.get('valor_venda', 0)) for i in imoveis_data] if imoveis_data else [0.0, 1000000.0]
@@ -570,7 +575,7 @@ elif menu == "📝 Novo Imóvel":
     c1, c2, c3 = st.columns(3)
     with c1:
         st.text_input("Código do Imóvel", value=codigo_gerado, disabled=True)
-        tipo = st.selectbox("Tipo de Imóvel", ["Casa", "Apartamento", "Terreno", "Sobrado", "Cobertura", "Sítio/Chácara"])
+        tipo = st.selectbox("Tipo de Imóvel", OPCOES_TIPO_IMOVEL)
         corretor_captacao = st.selectbox("Corretor que Captou *", CORRETORES)
     with c2:
         bairro = st.selectbox("Bairro (Passos-MG) *", BAIRROS_PASSOS)
@@ -640,11 +645,13 @@ elif menu == "📝 Novo Imóvel":
             st.error(f"Erro ao salvar imóvel: {err}")
 
 # ==========================================
-# 👥 ABA: NOVO LEAD (COM MULTISELECT DE IMÓVEIS)
+# 👤 ABA 4: NOVO LEAD (COM MULTISELECT)
 # ==========================================
-elif menu == "👥 Novo Lead":
+elif menu == "👤 Novo Lead":
     st.title("➕ Cadastrar Novo Lead")
-    
+    st.write("Registre um novo cliente no sistema com suas preferências de busca.")
+    st.divider()
+
     with st.form("form_novo_lead", clear_on_submit=True):
         nome = st.text_input("Nome do Lead*")
         col_c1, col_c2 = st.columns(2)
@@ -653,16 +660,21 @@ elif menu == "👥 Novo Lead":
         with col_c2:
             email = st.text_input("E-mail")
             
-        orcamento = st.number_input("Orçamento Máximo (R$)", min_value=0.0, step=10000.0, format="%.2f")
+        orcamento = st.number_input("Orçamento Máximo (R$)", min_value=0.0, value=500000.0, step=10000.0, format="%.2f")
         
         # PERMITE ESCOLHER CASA E APARTAMENTO JUNTOS
         tipos_imovel = st.multiselect(
             "Tipos de Imóvel de Interesse*",
-            ["Casa", "Apartamento", "Terreno", "Sobrado", "Comercial", "Chácara/Sítio"],
-            default=["Casa"]
+            OPCOES_TIPO_IMOVEL,
+            default=["Casa", "Apartamento"]
         )
         
-        bairros = st.text_input("Bairros de Interesse (separados por vírgula)", placeholder="Ex: Centro, Vilagio D'Italia, Jardins")
+        bairros_selecionados = st.multiselect(
+            "Bairros de Interesse (Passos-MG)",
+            BAIRROS_PASSOS
+        )
+
+        observacoes = st.text_area("Observações Adicionais")
         
         submitted = st.form_submit_button("💾 Salvar Lead", type="primary", use_container_width=True)
         
@@ -670,16 +682,14 @@ elif menu == "👥 Novo Lead":
             if not nome or not whatsapp or not tipos_imovel:
                 st.error("Por favor, preencha os campos obrigatórios (*).")
             else:
-                bairros_lista = [b.strip() for b in bairros.split(",") if b.strip()]
-                
-                # Salva os tipos selecionados como lista/string
                 dados_lead = {
                     "nome": nome,
                     "whatsapp": whatsapp,
                     "email": email,
                     "orcamento_maximo": orcamento,
-                    "tipo_imovel": tipos_imovel,  # Salva múltiplos tipos selecionados
-                    "bairros_interesse": bairros_lista,
+                    "tipo_imovel": tipos_imovel,
+                    "bairros_interesse": bairros_selecionados,
+                    "observacoes": observacoes,
                     "status": "🔵 Em busca (Frio)"
                 }
                 
@@ -687,16 +697,17 @@ elif menu == "👥 Novo Lead":
                     supabase.table("leads").insert(dados_lead).execute()
                     limpar_cache()
                     st.success(f"Lead **{nome}** cadastrado com sucesso!")
+                    st.rerun()
                 except Exception as e:
                     st.error(f"Erro ao salvar lead no banco de dados: {e}")
 
 # ==========================================
-# 👥 ABA 5: FUNIL DE LEADS (COM EDIÇÃO)
+# 👥 ABA 5: FUNIL DE LEADS (COM EDIÇÃO E EXCLUSÃO)
 # ==========================================
 elif menu == "👥 Funil de Leads":
     leads_data = carregar_leads()
     st.title("👥 Funil de Negociação de Leads")
-    st.write("Gerencie e edite as informações dos seus clientes em tempo real.")
+    st.write("Gerencie, edite e remova as informações dos seus clientes em tempo real.")
     st.divider()
 
     contagem_por_status = {status: 0 for status in STATUS_LEADS}
@@ -719,13 +730,13 @@ elif menu == "👥 Funil de Leads":
             else:
                 for lead in leads_da_aba:
                     lead_id = lead.get('id')
-                    nome_lead = lead.get('nome', '')
+                    nome_lead = lead.get('nome', 'Sem Nome')
                     whatsapp_lead = lead.get('whatsapp', '')
                     email_lead = lead.get('email', '')
                     orc_lead = float(lead.get('orcamento_maximo') or lead.get('orcamento_max') or 0.0)
                     obs_lead = lead.get('observacoes', '')
                     
-                    # Tratamento dos bairros para exibição e edição
+                    # Tratamento dos bairros
                     bairros_raw = lead.get('bairros_interesse', [])
                     if isinstance(bairros_raw, str):
                         bairros_lead = [b.strip() for b in bairros_raw.split(",") if b.strip()]
@@ -733,6 +744,15 @@ elif menu == "👥 Funil de Leads":
                         bairros_lead = [b.strip() for b in bairros_raw if b.strip()]
                     else:
                         bairros_lead = []
+
+                    # Tratamento dos tipos de imóveis
+                    tipos_raw = lead.get('tipo_imovel', [])
+                    if isinstance(tipos_raw, str):
+                        tipos_lead = [t.strip() for t in tipos_raw.split(",") if t.strip()]
+                    elif isinstance(tipos_raw, list):
+                        tipos_lead = [t.strip() for t in tipos_raw if t.strip()]
+                    else:
+                        tipos_lead = []
 
                     with st.container():
                         st.markdown('<div class="stCard">', unsafe_allow_html=True)
@@ -742,6 +762,8 @@ elif menu == "👥 Funil de Leads":
                             st.markdown(f"### **{nome_lead}**")
                             st.write(f"📱 **WhatsApp:** {whatsapp_lead} | 📧 **Email:** {email_lead if email_lead else 'Não informado'}")
                             st.write(f"💰 **Orçamento:** R$ {orc_lead:,.2f}")
+                            if tipos_lead:
+                                st.write(f"🏠 **Interesse:** {', '.join(tipos_lead)}")
                             if bairros_lead:
                                 st.caption(f"📍 **Bairros:** {', '.join(bairros_lead)}")
                             if obs_lead:
@@ -756,8 +778,8 @@ elif menu == "👥 Funil de Leads":
                                 st.success("Status atualizado!")
                                 st.rerun()
 
-                        # Expander de Edição do Lead
-                        with st.expander(f"✏️ Editar Dados de {nome_lead}"):
+                        # Expander de Edição e Exclusão do Lead
+                        with st.expander(f"✏️ Editar / 🗑️ Excluir Dados de {nome_lead}"):
                             with st.form(key=f"form_edit_lead_{lead_id}"):
                                 ed_col1, ed_col2 = st.columns(2)
                                 with ed_col1:
@@ -766,7 +788,16 @@ elif menu == "👥 Funil de Leads":
                                     novo_email = st.text_input("E-mail", value=email_lead)
                                 with ed_col2:
                                     novo_orc = st.number_input("Orçamento Máx (R$)", value=orc_lead, step=10000.0)
-                                    novos_bairros = st.multiselect("Bairros de Interesse", BAIRROS_PASSOS, default=[b for b in bairros_lead if b in BAIRROS_PASSOS])
+                                    novos_tipos = st.multiselect(
+                                        "Tipos de Imóvel",
+                                        OPCOES_TIPO_IMOVEL,
+                                        default=[t for t in tipos_lead if t in OPCOES_TIPO_IMOVEL]
+                                    )
+                                    novos_bairros = st.multiselect(
+                                        "Bairros de Interesse",
+                                        BAIRROS_PASSOS,
+                                        default=[b for b in bairros_lead if b in BAIRROS_PASSOS]
+                                    )
                                 
                                 novas_obs = st.text_area("Observações", value=obs_lead)
 
@@ -778,6 +809,7 @@ elif menu == "👥 Funil de Leads":
                                         "whatsapp": novo_wsp,
                                         "email": novo_email,
                                         "orcamento_maximo": float(novo_orc),
+                                        "tipo_imovel": novos_tipos,
                                         "bairros_interesse": novos_bairros,
                                         "observacoes": novas_obs
                                     }
@@ -786,10 +818,19 @@ elif menu == "👥 Funil de Leads":
                                     st.success("Lead atualizado com sucesso!")
                                     st.rerun()
 
+                            st.divider()
+                            st.markdown("##### ⚠️ Zona de Exclusão")
+                            col_del1, col_del2 = st.columns([3, 1])
+                            with col_del1:
+                                st.caption("Esta ação exclui permanentemente o lead do banco de dados e não pode ser desfeita.")
+                            with col_del2:
+                                if st.button("🗑️ Excluir Lead", key=f"btn_del_lead_{lead_id}", type="secondary", use_container_width=True):
+                                    excluir_lead(lead_id)
+
                         st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# 🎯 ABA 6: ENCONTRAR MATCHES (MARCAÇÃO DE STATUS SUPER VISÍVEL)
+# 🎯 ABA 6: ENCONTRAR MATCHES (MARCAÇÃO VISÍVEL)
 # ==========================================
 elif menu == "🎯 Encontrar Matches":
     leads_data = carregar_leads()
@@ -878,6 +919,7 @@ elif menu == "🎯 Encontrar Matches":
                 **Parâmetros do Cliente:**
                 - 💰 **Orçamento:** R$ {orc_lead:,.2f} *(Teto +10%: R$ {orc_max_com_margem:,.2f})*
                 - 📍 **Bairros:** {", ".join(bairros_interesse) if bairros_interesse else "Todos os bairros"}
+                - 🏠 **Tipos:** {", ".join(tipos_interesse) if tipos_interesse else "Todos os tipos"}
                 """)
                 st.divider()
 
@@ -913,9 +955,7 @@ elif menu == "🎯 Encontrar Matches":
                             
                             st.link_button("📲 Enviar no WhatsApp do Lead", url_whatsapp, type="primary", use_container_width=True)
 
-                            # --- SELEÇÃO DE STATUS COM BOTÕES DESTACADOS E ÍCONE ✅ ---
                             st.write("**Status da Interação:**")
-                            
                             col1, col2, col3, col4 = st.columns(4)
                             
                             opcoes = [
@@ -928,8 +968,6 @@ elif menu == "🎯 Encontrar Matches":
                             for valor_chave, rotulo_original, col in opcoes:
                                 with col:
                                     is_selected = (status_atual == valor_chave)
-                                    
-                                    # Se selecionado: ganha ícone ✅ e botão do tipo 'primary' (destacado)
                                     label_btn = f"✅ {rotulo_original}" if is_selected else rotulo_original
                                     type_btn = "primary" if is_selected else "secondary"
                                     
@@ -944,6 +982,7 @@ elif menu == "🎯 Encontrar Matches":
                                             st.rerun()
 
                             st.markdown('</div>', unsafe_allow_html=True)
+
 # ==========================================
 # 📅 ABA 7: VISITAS AGENDADAS
 # ==========================================
