@@ -790,6 +790,30 @@ elif menu == "👥 Funil de Leads":
                             url_wsp_lead = f"https://wa.me/{phone_clean}?text={urllib.parse.quote(texto_msg)}"
                             st.link_button("📲 Abrir Conversa no WhatsApp", url_wsp_lead, type="primary", use_container_width=True)
 
+                        # --- HISTÓRICO DE INTERAÇÕES ---
+                        with st.expander(f"📜 Histórico de Atendimento / Anotações ({nome_lead})"):
+                            # Registrar nova anotação
+                            with st.form(key=f"form_hist_{lead_id}", clear_on_submit=True):
+                                nova_nota = st.text_input("Adicionar nova anotação/ligação:")
+                                btn_add_nota = st.form_submit_button("➕ Salvar Registro")
+                                if btn_add_nota and nova_nota:
+                                    agora = datetime.now().strftime("%d/%m/%Y %H:%M")
+                                    # Formato textual acumulativo no campo observacoes ou tabela propria
+                                    texto_atualizado = f"[{agora}] {nova_nota}\n" + (obs_lead if obs_lead else "")
+                                    supabase.table("leads").update({"observacoes": texto_atualizado}).eq("id", lead_id).execute()
+                                    limpar_cache()
+                                    st.success("Anotação registrada!")
+                                    st.rerun()
+
+                            # Exibição dos registros
+                            st.markdown("**Linha do tempo de atendimentos:**")
+                            if obs_lead:
+                                for linha in obs_lead.split("\n"):
+                                    if linha.strip():
+                                        st.caption(f"• {linha}")
+                            else:
+                                st.info("Nenhuma anotação registrada até o momento.")
+
                         # --- EDIÇÃO E EXCLUSÃO DO LEAD ---
                         with st.expander(f"✏️ Editar / 🗑️ Excluir Dados de {nome_lead}"):
                             with st.form(key=f"form_edit_lead_{lead_id}"):
@@ -801,7 +825,7 @@ elif menu == "👥 Funil de Leads":
                                 with ed_col2:
                                     novo_orc = st.number_input("Orçamento Máx (R$)", value=orc_lead, step=10000.0)
                                 
-                                novas_obs = st.text_area("Observações", value=obs_lead)
+                                novas_obs = st.text_area("Observações Gerais", value=obs_lead)
 
                                 btn_salvar_lead = st.form_submit_button("💾 Salvar Alterações", type="primary", use_container_width=True)
                                 
