@@ -99,12 +99,20 @@ if "imovel" in query_params:
                     .price-tag {
                         background-color: #c59b27;
                         color: white;
-                        padding: 8px 16px;
+                        padding: 6px 14px;
                         border-radius: 20px;
                         font-weight: bold;
-                        font-size: 1.2rem;
+                        font-size: 1.1rem;
                         display: inline-block;
                         margin-bottom: 15px;
+                    }
+                    /* Redução do espaçamento e tamanho de bairro e código */
+                    .bairro-codigo {
+                        font-size: 0.85rem;
+                        color: #555555;
+                        margin-top: -10px;
+                        margin-bottom: 10px;
+                        line-height: 1.2;
                     }
                 </style>
                 """,
@@ -113,22 +121,58 @@ if "imovel" in query_params:
             
             # Cabeçalho
             if os.path.exists("logo.png"):
-                st.image("logo.png", width=160)
+                st.image("logo.png", width=140)
             else:
-                st.markdown(f"<h2 style='color:{COR_DOURADO}; margin-bottom:0;'>MENDES & SOARES</h2>", unsafe_allow_html=True)
+                st.markdown(f"<h3 style='color:{COR_DOURADO}; margin-bottom:0;'>MENDES & SOARES</h3>", unsafe_allow_html=True)
                 st.caption("Engenharia e Imóveis")
 
-            st.title(f"{imovel_cli.get('tipo', 'Imóvel')} — {imovel_cli.get('bairro', 'Passos-MG')}")
-            st.caption(f"Código: **{imovel_cli.get('codigo_imovel')}** | Passos - MG")
+            # Título do imóvel
+            st.markdown(f"<h2 style='margin-bottom: 2px;'>{imovel_cli.get('tipo', 'Imóvel')}</h2>", unsafe_allow_html=True)
+            
+            # Bairro e Código juntos e menores
+            st.markdown(
+                f'<div class="bairro-codigo">📍 {imovel_cli.get("bairro", "Passos-MG")} | Código: <b>{imovel_cli.get("codigo_imovel")}</b></div>', 
+                unsafe_allow_html=True
+            )
             
             st.markdown(f'<div class="price-tag">R$ {float(imovel_cli.get("valor_venda", 0)):,.2f}</div>', unsafe_allow_html=True)
             
-            # Carrossel de Fotos
+            # Carrossel Touch / Swipe com SwiperJS
             fotos_cli = imovel_cli.get("fotos_urls") or []
             if fotos_cli:
-                idx_foto = st.slider("Fotos do imóvel", 1, len(fotos_cli), 1, label_visibility="collapsed")
-                st.image(fotos_cli[idx_foto - 1], use_container_width=True)
-                st.caption(f"Foto {idx_foto} de {len(fotos_cli)}")
+                slides_html = "".join([f'<div class="swiper-slide"><img src="{url}" style="width:100%; border-radius:12px; height:320px; object-fit:cover;"></div>' for url in fotos_cli])
+                
+                swiper_code = f"""
+                <!-- Swiper CSS -->
+                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+                <style>
+                    body {{ margin: 0; background-color: transparent; }}
+                    .swiper {{ width: 100%; height: 320px; border-radius: 12px; }}
+                    .swiper-button-next, .swiper-button-prev {{ color: #c59b27; }}
+                    .swiper-pagination-bullet-active {{ background: #c59b27; }}
+                </style>
+
+                <!-- Swiper HTML -->
+                <div class="swiper">
+                    <div class="swiper-wrapper">
+                        {slides_html}
+                    </div>
+                    <div class="swiper-pagination"></div>
+                    <div class="swiper-button-prev"></div>
+                    <div class="swiper-button-next"></div>
+                </div>
+
+                <!-- Swiper JS -->
+                <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+                <script>
+                    const swiper = new Swiper('.swiper', {{
+                        loop: true,
+                        pagination: {{ el: '.swiper-pagination', clickable: true }},
+                        navigation: {{ nextEl: '.swiper-button-next', prevEl: '.swiper-button-prev' }},
+                    }});
+                </script>
+                """
+                st.components.v1.html(swiper_code, height=330)
             else:
                 st.info("Nenhuma foto cadastrada para este imóvel.")
 
