@@ -3,14 +3,9 @@ from supabase import create_client
 import urllib.parse
 import os
 from datetime import date, datetime
-from io import BytesIO
 import requests
 
-# --- NOVAS IMPORTAÇÕES PARA PDF E IA ---
-from reportlab.lib.pagesizes import letter
-from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+# --- IMPORTAÇÃO PARA IA ---
 from google import genai
 
 # ==========================================
@@ -79,64 +74,108 @@ def init_supabase():
 
 supabase = init_supabase()
 
-# --- FUNÇÃO DE GERAÇÃO DE PDF DE VENDAS ---
-def gerar_pdf_imovel(imovel):
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
-    story = []
-    styles = getSampleStyleSheet()
+# URL base para links compartilháveis do imóvel para clientes
+URL_BASE_APP = "https://crm-imobiliario-jfduwtza7vr6okamx3nfxf.streamlit.app"
 
-    title_style = ParagraphStyle(
-        'TitleStyle',
-        parent=styles['Heading1'],
-        fontSize=18,
-        textColor=colors.HexColor(COR_DOURADO),
-        spaceAfter=10
-    )
+# ==========================================
+# 🌐 VISUALIZAÇÃO LIMPA DO CLIENTE (LINK DIRETO)
+# ==========================================
+query_params = st.query_params
 
-    story.append(Paragraph(f"<b>{imovel.get('tipo', 'Imóvel')} - {imovel.get('bairro', '')}</b>", title_style))
-    story.append(Paragraph(f"Código: {imovel.get('codigo_imovel', 'N/A')} | Valor: R$ {float(imovel.get('valor_venda', 0)):,.2f}", styles['Heading2']))
-    story.append(Spacer(1, 10))
+if "imovel" in query_params:
+    codigo_imovel_param = query_params["imovel"]
+    
+    try:
+        res_cli = supabase.table("imoveis").select("*").eq("codigo_imovel", codigo_imovel_param).execute()
+        if res_cli.data:
+            imovel_cli = res_cli.data[0]
+            
+            # Oculta Sidebar da Imobiliária e limpa visual
+            st.markdown(
+                """
+                <style>
+                    [data-testid="stSidebar"] {display: none !important;}
+                    .stApp { max-width: 900px; margin: 0 auto; }
+                    .price-tag-client {
+                        background: linear-gradient(135deg, #c59b27, #a37f1e);
+                        color: #ffffff;
+                        padding: 10px 20px;
+                        border-radius: 25px;
+                        font-weight: bold;
+                        font-size: 1.4rem;
+                        display: inline-block;
+                        margin-bottom: 15px;
+                    }
+                </style>
+                """,
+                unsafe_allow_html=True
+            )
+            
+            if os.path.exists("logo.png"):
+                st.image("logo.png", width=220)
+            else:
+                st.markdown(f"<h2 style='color:{COR_DOURADO};'>MENDES & SOARES</h2>", unsafe_allow_html=True)
+                st.caption("Engenharia e Imóveis")
 
-    fotos_urls = imovel.get("fotos_urls") or []
-    if fotos_urls and len(fotos_urls) > 0:
-        try:
-            resp = requests.get(fotos_urls[0], timeout=5)
-            if resp.status_code == 200:
-                img_data = BytesIO(resp.content)
-                img = Image(img_data, width=400, height=250)
-                story.append(img)
-                story.append(Spacer(1, 15))
-        except Exception:
-            pass
+            st.title(f"🏠 {imovel_cli.get('tipo', 'Imóvel')} — {imovel_cli.get('bairro', 'Passos-MG')}")
+            st.caption(f"Código do Imóvel: **{imovel_cli.get('codigo_imovel')}** | Localização: Passos - MG")
+            
+            st.markdown(f'<div class="price-tag-client">R$ {float(imovel_cli.get("valor_venda", 0)):,.2f}</div>', unsafe_allow_html=True)
+            
+            st.divider()
+            
+            # --- CARROSSEL DE FOTOS ---
+            fotos_cli = imovel_cli.get("fotos_urls") or []
+            if fotos_cli:
+                st.subheader("🖼️ Galeria de Fotos")
+                idx_foto = st.radio(
+                    "Navegue pelas fotos:", 
+                    options=range(len(fotos_cli)), 
+                    format_func=lambda x: f"Foto {x+1}",
+                    horizontal=True
+                )
+                st.image(fotos_cli[idx_foto], use_container_width=True)
+            else:
+                st.info("Nenhuma foto cadastrada para este imóvel.")
+                
+            st.divider()
+            
+            # --- ESPECIFICAÇÕES ---
+            st.subheader("📐 Especificações do Imóvel")
+            c_c1, c_c2, c_c3, c_c4 = st.columns(4)
+            c_c1.metric("Quartos", imovel_cli.get("quartos", 0))
+            c_c2.metric("Suítes", imovel_cli.get("suites", 0))
+            c_c3.metric("Banheiros", imovel_cli.get("banheiros", 0))
+            c_c4.metric("Vagas Garagem", imovel_cli.get("vagas_garagem", 0))
+            
+            if imovel_cli.get("area_terreno") or imovel_cli.get("area_construida"):
+                c_a1, c_a2 = st.columns(2)
+                if imovel_cli.get("area_terreno"):
+                    c_a1.metric("Área do Lote", f"{imovel_cli.get('area_terreno')} m²")
+                if imovel_cli.get("area_construida"):
+                    c_a2.metric("Área Construída", f"{imovel_cli.get('area_construida')} m²")
 
-    dados_tabela = [
-        ["Quartos", "Suítes", "Banheiros", "Vagas"],
-        [str(imovel.get('quartos', 0)), str(imovel.get('suites', 0)), str(imovel.get('banheiros', 0)), str(imovel.get('vagas_garagem', 0))]
-    ]
-    t = Table(dados_tabela, colWidths=[100, 100, 100, 100])
-    t.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor(COR_AZUL_MARINHO)),
-        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
-        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-        ('BOTTOMPADDING', (0,0), (-1,0), 8),
-        ('BACKGROUND', (0,1), (-1,1), colors.HexColor("#F5F5F5")),
-        ('GRID', (0,0), (-1,-1), 1, colors.HexColor("#DDDDDD"))
-    ]))
-    story.append(t)
-    story.append(Spacer(1, 15))
-
-    story.append(Paragraph("<b>Descrição do Imóvel:</b>", styles['Heading3']))
-    story.append(Paragraph(imovel.get('descricao', 'Sem descrição cadastrada.'), styles['Normal']))
-    story.append(Spacer(1, 15))
-
-    story.append(Paragraph("<b>Mendes & Soares Engenharia e Imóveis</b>", styles['Normal']))
-    tel_contato = imovel.get('telefone_proprietario') or '(35) 9 9810-2465'
-    story.append(Paragraph(f"Contato: {tel_contato}", styles['Normal']))
-
-    doc.build(story)
-    buffer.seek(0)
-    return buffer
+            st.divider()
+            
+            # --- DESCRIÇÃO ---
+            st.subheader("📋 Descrição Detalhada")
+            st.write(imovel_cli.get("descricao", "Sem descrição disponível."))
+            
+            st.divider()
+            
+            # --- BOTÃO DE WHATSAPP ---
+            msg_wsp = f"Olá! Vi o imóvel código {imovel_cli.get('codigo_imovel')} e gostaria de agendar uma visita/saber mais detalhes!"
+            url_wsp = f"https://wa.me/5535998102465?text={urllib.parse.quote(msg_wsp)}"
+            
+            st.link_button("📱 Tenho Interesse! Falar com Corretor no WhatsApp", url_wsp, use_container_width=True, type="primary")
+            
+            st.stop()
+        else:
+            st.error("Imóvel não encontrado.")
+            st.stop()
+    except Exception as e:
+        st.error(f"Erro ao carregar dados do imóvel: {e}")
+        st.stop()
 
 # --- FUNÇÃO DE GERAÇÃO DE DESCRIÇÃO COM IA (GEMINI) ---
 def gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor):
@@ -424,6 +463,8 @@ elif menu == "📋 Imóveis Cadastrados":
         for imovel in imoveis_filtrados:
             status_atual = imovel.get('status', 'Disponível')
             imovel_id = imovel.get('id')
+            cod_imovel = imovel.get('codigo_imovel')
+            link_cliente = f"{URL_BASE_APP}/?imovel={cod_imovel}"
             
             with st.container():
                 st.markdown('<div class="stCard">', unsafe_allow_html=True)
@@ -460,7 +501,7 @@ elif menu == "📋 Imóveis Cadastrados":
                 with col2:
                     c_title, c_badge = st.columns([3, 1.2])
                     with c_title:
-                        st.subheader(f"{imovel.get('tipo')} — Cód: **{imovel.get('codigo_imovel')}**")
+                        st.subheader(f"{imovel.get('tipo')} — Cód: **{cod_imovel}**")
                     with c_badge:
                         st.markdown(f'<span class="price-badge">R$ {imovel.get("valor_venda", 0):,.2f}</span>', unsafe_allow_html=True)
                     
@@ -498,17 +539,14 @@ elif menu == "📋 Imóveis Cadastrados":
                     if tags_html:
                         st.markdown(tags_html, unsafe_allow_html=True)
                     
-                    st.write(f"📝 {imovel.get('descricao', 'Sem descrição.')}")
+                    # --- DESCRIÇÃO OCULTA DENTRO DE SANFONA PARA NÃO POLUIR A TELA ---
+                    with st.expander("📄 Ver descrição detalhada do imóvel"):
+                        st.write(imovel.get('descricao', 'Sem descrição cadastrada.'))
                     
-                    pdf_imovel = gerar_pdf_imovel(imovel)
-                    st.download_button(
-                        label="📄 Baixar PDF de Vendas",
-                        data=pdf_imovel,
-                        file_name=f"imovel_{imovel.get('codigo_imovel', 'ficha')}.pdf",
-                        mime="application/pdf",
-                        key=f"btn_pdf_cat_{imovel_id}"
-                    )
-                    
+                    # --- OPÇÃO PARA COPIAR LINK DIRETO PARA O CLIENTE ---
+                    st.caption("🔗 Link para envio direto ao cliente (com fotos e carrossel):")
+                    st.code(link_cliente, language="text")
+
                     c_status, c_actions = st.columns([2, 1])
                     with c_status:
                         novo_status = st.radio(
@@ -523,17 +561,17 @@ elif menu == "📋 Imóveis Cadastrados":
                             st.success(f"Status atualizado para: **{novo_status}**!")
                             st.rerun()
 
-                with st.expander(f"🗑️ Excluir Imóvel {imovel.get('codigo_imovel')}"):
+                with st.expander(f"🗑️ Excluir Imóvel {cod_imovel}"):
                     st.warning("⚠️ Esta ação é permanente e removerá o imóvel da base de dados.")
                     confirma_excluir = st.checkbox("Confirmar exclusão deste imóvel", key=f"chk_del_{imovel_id}")
                     if st.button("🚨 Excluir Definitivamente", key=f"btn_del_{imovel_id}", type="primary"):
                         if confirma_excluir:
                             supabase.table("imoveis").delete().eq("id", imovel_id).execute()
-                            st.success(f"Imóvel **{imovel.get('codigo_imovel')}** removido com sucesso!")
+                            st.success(f"Imóvel **{cod_imovel}** removido com sucesso!")
                             st.rerun()
 
                 # --- SANFONA DE EDIÇÃO COM FORMULÁRIO INTERNO ---
-                with st.expander(f"✏️ Editar imóvel {imovel.get('codigo_imovel')}"):
+                with st.expander(f"✏️ Editar imóvel {cod_imovel}"):
                     tipos_list = ["Casa", "Apartamento", "Terreno", "Sobrado", "Cobertura", "Sítio/Chácara"]
                     idx_tipo = tipos_list.index(imovel.get('tipo')) if imovel.get('tipo') in tipos_list else 0
                     idx_bairro = BAIRROS_PASSOS.index(imovel.get('bairro')) if imovel.get('bairro') in BAIRROS_PASSOS else 0
@@ -836,6 +874,7 @@ elif "Novo Lead" in menu:
                     st.toast("Lead registrado!", icon="✅")
                 except Exception as e:
                     st.error(f"Erro ao cadastrar lead no Supabase: {e}")
+
 # ==========================================
 # 👥 ABA 5: FUNIL DE LEADS COMPACTO POR ABAS
 # ==========================================
@@ -875,7 +914,6 @@ elif menu == "👥 Funil de Leads":
             contagem_por_status["🔵 Em busca (Frio)"] += 1
             leads_agrupados["🔵 Em busca (Frio)"].append(l)
 
-    # Rótulos com formato "02 🔵 STATUS"
     titulos_abas = [
         f"{contagem_por_status[status]:02d} {status}" 
         for status in STATUS_LEADS
@@ -986,17 +1024,14 @@ elif menu == "🎯 Encontrar Matches":
 
             st.markdown(f"**Perfil do Lead:** Orçamento de até **R$ {orc_lead:,.2f}** nos bairros: *{', '.join(bairros_lead) if bairros_lead else 'Todos'}*")
             
-            # --- CARREGAR STATUS DOS MATCHES REGISTRADOS NO SUPABASE ---
             historico_matches = {}
             try:
                 res_m = supabase.table("matches_status").select("*").eq("lead_id", lead_id).execute()
                 if res_m.data:
                     historico_matches = {item['imovel_id']: item['status'] for item in res_m.data}
             except Exception:
-                # Caso a tabela ainda não exista no Supabase
                 pass
 
-            # Checkbox para visualizar ou não os arquivados
             exibir_arquivados = st.checkbox("👁️ Mostrar imóveis arquivados/descartados por este cliente", value=False)
             st.divider()
 
@@ -1005,7 +1040,6 @@ elif menu == "🎯 Encontrar Matches":
                 im_id = im.get('id')
                 status_match = historico_matches.get(im_id, "Pendente")
 
-                # Se foi descartado e a opção de mostrar arquivados estiver desativada, ignora
                 if status_match == "Viu e não gostou" and not exibir_arquivados:
                     continue
 
@@ -1026,13 +1060,15 @@ elif menu == "🎯 Encontrar Matches":
             else:
                 for match, st_match in matches:
                     imovel_id = match.get('id')
+                    cod_im = match.get('codigo_imovel')
+                    link_match = f"{URL_BASE_APP}/?imovel={cod_im}"
                     
                     with st.container():
                         st.markdown('<div class="stCard">', unsafe_allow_html=True)
                         m_c1, m_c2 = st.columns([2.5, 1.5])
                         
                         with m_c1:
-                            st.markdown(f"### {match.get('tipo')} — Cód: {match.get('codigo_imovel')}")
+                            st.markdown(f"### {match.get('tipo')} — Cód: {cod_im}")
                             st.write(f"📍 Bairro: **{match.get('bairro')}** | 💰 R$ {match.get('valor_venda', 0):,.2f}")
                             st.write(f"🛏️ {match.get('quartos', 0)} qtos | 🚿 {match.get('suites', 0)} suítes | 🚗 {match.get('vagas_garagem', 0)} vagas")
                             
@@ -1040,27 +1076,19 @@ elif menu == "🎯 Encontrar Matches":
                                 st.caption(f"📌 **Status atual do Match:** `{st_match}`")
 
                         with m_c2:
-                            msg_wa = f"Olá {lead_sel.get('nome')}! Encontrei este imóvel perfeito para você: {match.get('tipo')} no bairro {match.get('bairro')} por R$ {match.get('valor_venda', 0):,.2f}. Código: {match.get('codigo_imovel')}."
+                            msg_wa = f"Olá {lead_sel.get('nome')}! Encontrei este imóvel perfeito para você: {match.get('tipo')} no bairro {match.get('bairro')} por R$ {match.get('valor_venda', 0):,.2f}.\n\nConfira as fotos e detalhes completa no link:\n{link_match}"
                             url_wa = f"https://wa.me/{str(lead_sel.get('whatsapp')).replace('+', '').replace(' ', '').replace('-', '')}?text={urllib.parse.quote(msg_wa)}"
                             
-                            st.markdown(f'<a href="{url_wa}" target="_blank" style="text-decoration:none;"><button style="width:100%; padding:8px; background-color:#25D366; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer; margin-bottom: 6px;">📱 Enviar WhatsApp</button></a>', unsafe_allow_html=True)
+                            st.markdown(f'<a href="{url_wa}" target="_blank" style="text-decoration:none;"><button style="width:100%; padding:8px; background-color:#25D366; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer; margin-bottom: 6px;">📱 Enviar Link via WhatsApp</button></a>', unsafe_allow_html=True)
                             
-                            pdf_match = gerar_pdf_imovel(match)
-                            st.download_button(
-                                label="📄 Baixar PDF",
-                                data=pdf_match,
-                                file_name=f"imovel_{match.get('codigo_imovel', 'ficha')}.pdf",
-                                mime="application/pdf",
-                                key=f"btn_pdf_match_{imovel_id}",
-                                use_container_width=True
-                            )
+                            st.caption("📋 Copiar Link do Imóvel:")
+                            st.code(link_match, language="text")
                             
                             st.divider()
                             st.caption("Ações do Match:")
                             
                             col_a1, col_a2, col_a3 = st.columns(3)
                             
-                            # 1. BOTÃO VIU E NÃO GOSTOU (ARQUIVAR)
                             with col_a1:
                                 if st.button("🚫 Descartar", key=f"desc_{imovel_id}_{lead_id}", help="Cliente viu e não gostou (Arquiva o match)"):
                                     try:
@@ -1074,7 +1102,6 @@ elif menu == "🎯 Encontrar Matches":
                                     except Exception as err:
                                         st.error(f"Erro: {err}")
 
-                            # 2. BOTÃO VISITA AGENDADA
                             with col_a2:
                                 if st.button("📅 Visita", key=f"vis_{imovel_id}_{lead_id}", help="Agendar visita e atualizar lead"):
                                     try:
@@ -1084,14 +1111,12 @@ elif menu == "🎯 Encontrar Matches":
                                             "status": "Visita Agendada"
                                         }).execute()
                                         
-                                        # Atualiza também o status do lead no funil
                                         supabase.table("leads").update({"status": "🟡 Visita Agendada"}).eq("id", lead_id).execute()
                                         st.toast("Visita marcada e Lead movido no Funil!", icon="📅")
                                         st.rerun()
                                     except Exception as err:
                                         st.error(f"Erro: {err}")
 
-                            # 3. BOTÃO PROPOSTA ENVIADA
                             with col_a3:
                                 if st.button("📝 Proposta", key=f"prop_{imovel_id}_{lead_id}", help="Enviar proposta e mover lead"):
                                     try:
@@ -1101,7 +1126,6 @@ elif menu == "🎯 Encontrar Matches":
                                             "status": "Proposta Enviada"
                                         }).execute()
                                         
-                                        # Atualiza também o status do lead no funil
                                         supabase.table("leads").update({"status": "🟠 Proposta Enviada (Quente)"}).eq("id", lead_id).execute()
                                         st.toast("Proposta registrada e Lead movido no Funil!", icon="📝")
                                         st.rerun()
@@ -1109,6 +1133,7 @@ elif menu == "🎯 Encontrar Matches":
                                         st.error(f"Erro: {err}")
 
                         st.markdown('</div>', unsafe_allow_html=True)
+
 # ==========================================
 # 📅 ABA 7: VISITAS AGENDADAS
 # ==========================================
