@@ -90,7 +90,7 @@ if "imovel" in query_params:
         if res_cli.data:
             imovel_cli = res_cli.data[0]
             
-            # Oculta Sidebar da Imobiliária e limpa visual
+            # Oculta Sidebar da Imobiliária e otimiza layout mobile
             st.markdown(
                 """
                 <style>
@@ -105,6 +105,10 @@ if "imovel" in query_params:
                         font-size: 1.4rem;
                         display: inline-block;
                         margin-bottom: 15px;
+                    }
+                    .nav-btn button {
+                        font-size: 1.5rem !important;
+                        padding: 12px !important;
                     }
                 </style>
                 """,
@@ -124,17 +128,59 @@ if "imovel" in query_params:
             
             st.divider()
             
-            # --- CARROSSEL DE FOTOS ---
+            # --- GALERIA INTERATIVA COM NAVEGAÇÃO DIRETA (FÁCIL NO CELULAR) ---
             fotos_cli = imovel_cli.get("fotos_urls") or []
             if fotos_cli:
                 st.subheader("🖼️ Galeria de Fotos")
-                idx_foto = st.radio(
-                    "Navegue pelas fotos:", 
-                    options=range(len(fotos_cli)), 
-                    format_func=lambda x: f"Foto {x+1}",
-                    horizontal=True
-                )
+                
+                # Controle do estado da foto atual do cliente
+                if "cli_foto_idx" not in st.session_state:
+                    st.session_state.cli_foto_idx = 0
+
+                idx_foto = st.session_state.cli_foto_idx
+                if idx_foto >= len(fotos_cli):
+                    idx_foto = 0
+                    st.session_state.cli_foto_idx = 0
+
+                # Exibe a foto atual em alta resolução
                 st.image(fotos_cli[idx_foto], use_container_width=True)
+
+                if len(fotos_cli) > 1:
+                    # Botões grandes de navegação direta (◀ Avançar e Recuar ▶) para uso fácil no celular
+                    c_btn_prev, c_info, c_btn_next = st.columns([1, 2, 1])
+                    
+                    with c_btn_prev:
+                        if st.button("◀ Anterior", key="cli_btn_prev", use_container_width=True):
+                            st.session_state.cli_foto_idx = (idx_foto - 1) % len(fotos_cli)
+                            st.rerun()
+
+                    with c_info:
+                        st.markdown(
+                            f"<p style='text-align:center; margin-top:8px; font-weight:bold;'>"
+                            f"Foto {idx_foto + 1} de {len(fotos_cli)}"
+                            f"</p>",
+                            unsafe_allow_html=True
+                        )
+
+                    with c_btn_next:
+                        if st.button("Próxima ▶", key="cli_btn_next", type="primary", use_container_width=True):
+                            st.session_state.cli_foto_idx = (idx_foto + 1) % len(fotos_cli)
+                            st.rerun()
+
+                    # Slider opcional e rápido para arrastar direto no celular
+                    novo_idx = st.slider(
+                        "Deslize para trocar de foto:",
+                        min_value=1,
+                        max_value=len(fotos_cli),
+                        value=idx_foto + 1,
+                        step=1,
+                        key="cli_slider_fotos"
+                    )
+                    
+                    if novo_idx - 1 != st.session_state.cli_foto_idx:
+                        st.session_state.cli_foto_idx = novo_idx - 1
+                        st.rerun()
+
             else:
                 st.info("Nenhuma foto cadastrada para este imóvel.")
                 
@@ -539,11 +585,9 @@ elif menu == "📋 Imóveis Cadastrados":
                     if tags_html:
                         st.markdown(tags_html, unsafe_allow_html=True)
                     
-                    # --- DESCRIÇÃO OCULTA DENTRO DE SANFONA PARA NÃO POLUIR A TELA ---
                     with st.expander("📄 Ver descrição detalhada do imóvel"):
                         st.write(imovel.get('descricao', 'Sem descrição cadastrada.'))
                     
-                    # --- OPÇÃO PARA COPIAR LINK DIRETO PARA O CLIENTE ---
                     st.caption("🔗 Link para envio direto ao cliente (com fotos e carrossel):")
                     st.code(link_cliente, language="text")
 
@@ -570,7 +614,6 @@ elif menu == "📋 Imóveis Cadastrados":
                             st.success(f"Imóvel **{cod_imovel}** removido com sucesso!")
                             st.rerun()
 
-                # --- SANFONA DE EDIÇÃO COM FORMULÁRIO INTERNO ---
                 with st.expander(f"✏️ Editar imóvel {cod_imovel}"):
                     tipos_list = ["Casa", "Apartamento", "Terreno", "Sobrado", "Cobertura", "Sítio/Chácara"]
                     idx_tipo = tipos_list.index(imovel.get('tipo')) if imovel.get('tipo') in tipos_list else 0
@@ -891,7 +934,6 @@ elif menu == "👥 Funil de Leads":
 
     st.divider()
 
-    # Aplicação dos Filtros Gerais
     leads_filtrados = leads_data
     if busca_lead:
         termo_l = busca_lead.lower().strip()
@@ -899,7 +941,6 @@ elif menu == "👥 Funil de Leads":
     if filtro_bairro_lead != "Todos":
         leads_filtrados = [l for l in leads_filtrados if filtro_bairro_lead in str(l.get('bairros_interesse', ''))]
 
-    # Contagem e Agrupamento dos Leads
     contagem_por_status = {status: 0 for status in STATUS_LEADS}
     leads_agrupados = {status: [] for status in STATUS_LEADS}
 
