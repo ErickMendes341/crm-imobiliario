@@ -349,13 +349,21 @@ def calcular_total_matches(imoveis, leads):
     
     for l in leads_ativos:
         orc = float(l.get('orcamento_maximo') or l.get('orcamento_max') or 0.0)
+        margem_superior = orc * 1.15
+        
         bairros_raw = l.get('bairros_interesse', [])
-        bairros = [b.strip() for b in bairros_raw.split(",")] if isinstance(bairros_raw, str) else bairros_raw
+        if isinstance(bairros_raw, str):
+            limpo_b = bairros_raw.replace("[", "").replace("]", "").replace("'", "").replace('"', "")
+            bairros = [b.strip().lower() for b in limpo_b.split(",") if b.strip()]
+        elif isinstance(bairros_raw, list):
+            bairros = [str(b).strip().lower() for b in bairros_raw if str(b).strip()]
+        else:
+            bairros = []
             
         for im in imoveis_disp:
             preco = float(im.get('valor_venda', 0.0))
-            bairro = im.get('bairro', '')
-            if preco <= orc and ((not bairros) or (bairro in bairros)):
+            bairro_im = str(im.get('bairro', '')).strip().lower()
+            if preco <= margem_superior and ((not bairros) or (bairro_im in bairros)):
                 total += 1
     return total
 
