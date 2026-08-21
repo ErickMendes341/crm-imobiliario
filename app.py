@@ -803,65 +803,66 @@ elif menu == "👥 Funil de Leads":
                                 st.rerun()
 
                    
-                   # --- HISTÓRICO DE ATENDIMENTO ---
-                    with st.expander(f"📜 Histórico de Atendimentos ({nome_lead})"):
-                        historico = carregar_interacoes(lead_id)
-                        
-                        # Formulário apenas para adicionar novas anotações
-                        with st.form(key=f"form_hist_{lead_id}", clear_on_submit=True):
-                            col_h1, col_h2 = st.columns([3, 1])
-                            with col_h1:
-                                nova_nota = st.text_input("Nova anotação de atendimento", placeholder="Ex: Cliente gostou da casa no Centro...", key=f"input_nota_{lead_id}")
-                            with col_h2:
-                                corretor_nota = st.selectbox("Corretor", CORRETORES, key=f"corr_hist_{lead_id}")
-                            
-                            btn_add_hist = st.form_submit_button("➕ Registrar Anotação", type="primary", use_container_width=True)
-                            
-                            if btn_add_hist and nova_nota:
-                                try:
-                                    supabase.table("interacoes_leads").insert({
-                                        "lead_id": lead_id,
-                                        "observacao": nova_nota,
-                                        "corretor": corretor_nota,
-                                        "created_at": (datetime.now() - timedelta(hours=3)).isoformat(),  # Adiciona a data e hora atual automaticamente
-                                    }).execute()
-                                    st.success("Anotação salva com sucesso!")
-                                    st.rerun()
-                                except Exception as e:
-                                    st.error(f"Erro ao salvar histórico: {e}")
+                 # --- HISTÓRICO DE ATENDIMENTO ---
+with st.expander(f"📜 Histórico de Atendimentos ({nome_lead})"):
+    historico = carregar_interacoes(lead_id)
+    
+    # Formulário apenas para adicionar novas anotações
+    with st.form(key=f"form_hist_{lead_id}", clear_on_submit=True):
+        col_h1, col_h2 = st.columns([3, 1])
+        with col_h1:
+            nova_nota = st.text_input("Nova anotação de atendimento", placeholder="Ex: Cliente gostou da casa no Centro...", key=f"input_nota_{lead_id}")
+        with col_h2:
+            corretor_nota = st.selectbox("Corretor", CORRETORES, key=f"corr_hist_{lead_id}")
+        
+        btn_add_hist = st.form_submit_button("➕ Registrar Anotação", type="primary", use_container_width=True)
+        
+        if btn_add_hist and nova_nota:
+            try:
+                supabase.table("interacoes_leads").insert({
+                    "lead_id": lead_id,
+                    "observacao": nova_nota,  # Salvando na coluna correta mostrada no print
+                    "corretor": corretor_nota,
+                    "created_at": (datetime.now() - timedelta(hours=3)).isoformat(),
+                }).execute()
+                st.success("Anotação salva com sucesso!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Erro ao salvar histórico: {e}")
 
-                        st.divider()
+    st.divider()
 
-                        # Exibir lista de histórico
-                        if not historico:
-                            st.caption("Nenhum atendimento registrado até o momento.")
-                        else:
-                            for h in historico:
-                                interacao_id = h.get('id')
-                                dt_str = h.get('created_at', '')
-                                
-                                texto_nota = h.get('observacao') or h.get('anotacao') or h.get('mensagem') or h.get('resumo') or 'Sem conteúdo'
-                                
-                                if dt_str:
-                                    try:
-                                        dt_obj = datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
-                                        data_formatada = dt_obj.strftime("%d/%m/%Y às %H:%M")
-                                    except Exception:
-                                        data_formatada = dt_str
-                                else:
-                                    data_formatada = "Data não informada"
-                                
-                                col_info, col_btn = st.columns([4, 1])
-                                with col_info:
-                                    st.markdown(f"📅 **{data_formatada}** | 👤 **{h.get('corretor', 'Sistema')}**")
-                                    st.write(f"💬 {texto_nota}")
+    # Exibir lista de histórico
+    if not historico:
+        st.caption("Nenhum atendimento registrado até o momento.")
+    else:
+        for h in historico:
+            interacao_id = h.get('id')
+            dt_str = h.get('created_at', '')
+            
+            # Pega diretamente da coluna "observacao" que vimos no seu Supabase
+            texto_nota = h.get('observacao', 'Sem conteúdo')
+            
+            if dt_str:
+                try:
+                    dt_obj = datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
+                    data_formatada = dt_obj.strftime("%d/%m/%Y às %H:%M")
+                except Exception:
+                    data_formatada = dt_str
+            else:
+                data_formatada = "Data não informada"
+            
+            col_info, col_btn = st.columns([4, 1])
+            with col_info:
+                st.markdown(f"📅 **{data_formatada}** | 👤 **{h.get('corretor', 'Sistema')}**")
+                st.write(f"💬 {texto_nota}")
 
-                                with col_btn:
-                                  if st.button("🗑️ Excluir", key=f"btn_del_hist_{lead_id}_{interacao_id}", type="secondary"):
-                                    supabase.table("interacoes_leads").delete().eq("id", interacao_id).execute()
-                                    limpar_cache()
-                                    st.toast("Anotação excluída!")
-                                    st.rerun()
+            with col_btn:
+                if st.button("🗑️ Excluir", key=f"btn_del_hist_{lead_id}_{interacao_id}", type="secondary"):
+                    supabase.table("interacoes_leads").delete().eq("id", interacao_id).execute()
+                    limpar_cache()
+                    st.toast("Anotação excluída!")
+                    st.rerun()
                                       
                         # Expander de Edição e Exclusão do Lead
                         with st.expander(f"✏️ Editar / 🗑️ Excluir Dados de {nome_lead}"):
