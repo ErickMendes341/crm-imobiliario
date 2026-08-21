@@ -848,16 +848,12 @@ elif menu == "👥 Funil de Leads":
                                     st.write(f"💬 {texto_nota}")
 
                                 with col_btn:
-                                 if st.button("🗑️ Excluir", key=f"btn_del_hist_{lead_id}_{interacao_id}", type="secondary"):
-                                    # Exibe um aviso na tela para vermos se o ID está chegando aqui
-                                     st.warning(f"Tentando excluir ID: {interacao_id}")
-                                        if interacao_id:
-                                        supabase.table("interacoes_leads")->delete().eq("id", interacao_id).execute()
-                                        limpar_cache()
-                                        st.toast("Anotação excluída com sucesso!")
-                                        st.rerun()
-                                     else:
-                                        st.error("O interacao_id está vazio!")
+                                  if st.button("🗑️ Excluir", key=f"btn_del_hist_{lead_id}_{interacao_id}", type="secondary"):
+                                    supabase.table("interacoes_leads").delete().eq("id", interacao_id).execute()
+                                    limpar_cache()
+                                    st.toast("Anotação excluída!")
+                                    st.rerun()
+                                      
                         # Expander de Edição e Exclusão do Lead
                         with st.expander(f"✏️ Editar / 🗑️ Excluir Dados de {nome_lead}"):
                             with st.form(key=f"form_edit_lead_{lead_id}"):
