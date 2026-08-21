@@ -6,6 +6,8 @@ from datetime import date, datetime, timedelta
 from PIL import Image, ImageOps
 import io
 import time
+import unicodedata
+import re
 
 # --- IMPORTAÇÃO PARA IA ---
 from google import genai
@@ -361,10 +363,6 @@ st.markdown(f"""
         background: linear-gradient(135deg, {COR_DOURADO}, {COR_DOURADO_HOVER});
         color: #ffffff; padding: 6px 14px; border-radius: 20px; font-weight: 700; display: inline-block;
     }}
-    .feature-tag {{
-        background-color: #f1f5f9; color: {COR_AZUL_MARINHO}; padding: 4px 10px;
-        border-radius: 6px; font-size: 0.8em; font-weight: 600; margin-right: 4px; display: inline-block; border: 1px solid #cbd5e1;
-    }}
     div.stButton > button[kind="primary"] {{
         background-color: {COR_DOURADO} !important; color: #ffffff !important; border: none !important; border-radius: 8px !important; font-weight: bold !important;
     }}
@@ -414,7 +412,7 @@ if menu == "📊 Dashboard":
     with col5: st.metric(label="🎉 Vendas", value=len(leads_fechados))
 
 # ==========================================
-# 📋 ABA 2: IMÓVEIS CADASTRADOS
+# 📋 ABA 2: IMÓVEIS CADASTRADOS (COM EDIÇÃO COMPLETA)
 # ==========================================
 elif menu == "📋 Imóveis Cadastrados":
     imoveis_data = carregar_imoveis()
@@ -475,15 +473,71 @@ elif menu == "📋 Imóveis Cadastrados":
                     limpar_cache()
                     st.rerun()
 
-            with st.expander(f"✏️ Editar / Excluir {cod_imovel}"):
-                if st.button("🗑️ Excluir Definitivamente", key=f"btn_del_{imovel_id}", type="secondary"):
+            # --- EXPANDER DE EDIÇÃO E EXCLUSÃO ---
+            with st.expander(f"✏️ Editar dados ou adicionar fotos de {cod_imovel}"):
+                with st.form(f"form_editar_{imovel_id}"):
+                    st.subheader(f"Editando Imóvel: {cod_imovel}")
+                    
+                    e_c1, e_c2, e_c3 = st.columns(3)
+                    with e_c1:
+                        novo_tipo = st.selectbox("Tipo", OPCOES_TIPO_IMOVEL, index=OPCOES_TIPO_IMOVEL.index(imovel.get('tipo')) if imovel.get('tipo') in OPCOES_TIPO_IMOVEL else 0)
+                        novo_bairro = st.selectbox("Bairro", BAIRROS_PASSOS, index=BAIRROS_PASSOS.index(imovel.get('bairro')) if imovel.get('bairro') in BAIRROS_PASSOS else 0)
+                        novo_valor = st.number_input("Valor de Venda (R$)", min_value=0.0, value=float(imovel.get('valor_venda', 0)), step=10000.0)
+                    with e_c2:
+                        novo_endereco = st.text_input("Endereço", value=imovel.get('endereco', ''))
+                        novo_prop = st.text_input("Proprietário", value=imovel.get('nome_proprietario', ''))
+                        novo_tel = st.text_input("Telefone Proprietário", value=imovel.get('telefone_proprietario', ''))
+                    with e_c3:
+                        novo_quartos = st.number_input("Quartos", min_value=0, value=int(imovel.get('quartos', 0)))
+                        novo_suites = st.number_input("Suítes", min_value=0, value=int(imovel.get('suites', 0)))
+                        novo_vagas = st.number_input("Vagas", min_value=0, value=int(imovel.get('vagas_garagem', 0)))
+
+                    nova_desc = st.text_area("Descrição", value=imovel.get('descricao', ''))
+                    
+                    st.write("📷 **Adicionar novas fotos a este imóvel:**")
+                    novas_fotos_arq = st.file_uploader("Tire fotos ou escolha arquivos", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key=f"up_edit_{imovel_id}")
+
+                    if st.form_submit_button("💾 Salvar Alterações", type="primary", use_container_width=True):
+                        urls_atualizadas = list(fotos_urls)
+                        if novas_fotos_arq:
+                            for idx_f, arq_f in enumerate(novas_fotos_arq):
+                                b_orig = arq_f.getvalue()
+                                b_mar = aplicar_marca_dagua(b_orig)
+                                nome_l = unicodedata.normalize('NFKD', arq_f.name).encode('ASCII', 'ignore').decode('ASCII')
+                                nome_l = re.sub(r'[^a-zA-Z0-9_.-]', '_', nome_l)
+                                caminho_st = f"{cod_imovel}_edit_{int(time.time())}_{idx_f}_{nome_l}"
+                                
+                                try:
+                                    supabase.storage.from_("fotos-imoveis").upload(caminho_st, b_mar, {"content-type": "image/jpeg", "upsert": "true"})
+                                    url_pub = supabase.storage.from_("fotos-imoveis").get_public_url(caminho_st)
+                                    urls_atualizadas.append(url_pub)
+                                except Exception as e_up:
+                                    st.error(f"Erro ao enviar foto: {e_up}")
+
+                        dados_atualizados = {
+                            "tipo": novo_tipo, "bairro": novo_bairro, "valor_venda": novo_valor,
+                            "endereco": novo_endereco, "nome_proprietario": novo_prop,
+                            "telefone_proprietario": novo_tel, "quartos": novo_quartos,
+                            "suites": novo_suites, "vagas_garagem": novo_vagas,
+                            "descricao": nova_desc, "fotos_urls": urls_atualizadas
+                        }
+
+                        try:
+                            supabase.table("imoveis").update(dados_atualizados).eq("id", imovel_id).execute()
+                            limpar_cache()
+                            st.success("Imóvel atualizado com sucesso!")
+                            st.rerun()
+                        except Exception as e_db:
+                            st.error(f"Erro ao atualizar no banco: {e_db}")
+
+                if st.button("🗑️ Excluir Imóvel Definitivamente", key=f"btn_del_{imovel_id}", type="secondary"):
                     supabase.table("imoveis").delete().eq("id", imovel_id).execute()
                     limpar_cache()
                     st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# 📝 ABA 3: NOVO IMÓVEL (MÚLTIPLAS FOTOS E CÂMERA INTEGRADA)
+# 📝 ABA 3: NOVO IMÓVEL (COM MÚLTIPLAS FOTOS E CÂMERA)
 # ==========================================
 elif menu == "📝 Novo Imóvel":
     st.title("📝 Cadastrar Novo Imóvel")
@@ -531,7 +585,6 @@ elif menu == "📝 Novo Imóvel":
     st.subheader("📷 Galeria de Fotos e Câmera")
     st.info("💡 No celular ou computador, o campo abaixo permite **selecionar múltiplos arquivos de uma vez** ou **acionar a câmera diretamente** para capturar várias fotos em sequência.")
 
-    # O parâmetro accept_multiple_files=True junto com capture="environment" no HTML interno do Streamlit permite tirar várias fotos pelo celular
     fotos_enviadas = st.file_uploader(
         "Tire fotos com a câmera ou escolha da galeria do aparelho", 
         type=["jpg", "jpeg", "png"], 
@@ -541,7 +594,6 @@ elif menu == "📝 Novo Imóvel":
 
     if fotos_enviadas:
         st.success(f"📸 {len(fotos_enviadas)} foto(s) carregada(s) com sucesso para este imóvel!")
-        # Exibe as miniaturas em colunas para uma tela organizada
         cols_mini = st.columns(min(len(fotos_enviadas), 4))
         for idx, foto_file in enumerate(fotos_enviadas):
             with cols_mini[idx % 4]:
@@ -566,13 +618,24 @@ elif menu == "📝 Novo Imóvel":
                 
                 for idx, arq in enumerate(fotos_enviadas):
                     bytes_originais = arq.getvalue()
-                    # Aplica a marca d'água corporativa em cada foto individualmente
                     bytes_com_marca = aplicar_marca_dagua(bytes_originais)
                     
-                    caminho_storage = f"imoveis/{codigo_gerado}_{idx}_{arq.name}"
-                    supabase.storage.from_("fotos-imoveis").upload(caminho_storage, bytes_com_marca, {"content-type": "image/jpeg"})
-                    url_publica = supabase.storage.from_("fotos-imoveis").get_public_url(caminho_storage)
-                    urls_fotos.append(url_publica)
+                    nome_limpo = unicodedata.normalize('NFKD', arq.name).encode('ASCII', 'ignore').decode('ASCII')
+                    nome_limpo = re.sub(r'[^a-zA-Z0-9_.-]', '_', nome_limpo)
+                    
+                    caminho_storage = f"{codigo_gerado}_{idx}_{nome_limpo}"
+                    
+                    try:
+                        supabase.storage.from_("fotos-imoveis").upload(
+                            caminho_storage, 
+                            bytes_com_marca, 
+                            {"content-type": "image/jpeg", "upsert": "true"}
+                        )
+                        url_publica = supabase.storage.from_("fotos-imoveis").get_public_url(caminho_storage)
+                        urls_fotos.append(url_publica)
+                    except Exception as err_img:
+                        st.error(f"Erro ao enviar a foto {arq.name}: {err_img}")
+                        
                     barra_progresso.progress((idx + 1) / total_f)
             
             dados_imovel = {
@@ -593,7 +656,7 @@ elif menu == "📝 Novo Imóvel":
                 if 'descricao_temp' in st.session_state: del st.session_state['descricao_temp']
                 st.rerun()
             except Exception as err:
-                st.error(f"Erro ao salvar imóvel: {err}")
+                st.error(f"Erro ao salvar imóvel no banco de dados: {err}")
 
 # ==========================================
 # 👤 ABA 4: NOVO LEAD
