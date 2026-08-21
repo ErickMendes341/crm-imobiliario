@@ -795,11 +795,11 @@ elif menu == "👥 Funil de Leads":
                                 st.rerun()
 
                    
-                      # --- HISTÓRICO DE ATENDIMENTO ---
+                    # --- HISTÓRICO DE ATENDIMENTO ---
                         with st.expander(f"📜 Histórico de Atendimentos ({nome_lead})"):
                             historico = carregar_interacoes(lead_id)
                             
-                            # Formulário limpo apenas para adicionar novas notas
+                            # Formulário apenas para adicionar novas anotações
                             with st.form(key=f"form_hist_{lead_id}", clear_on_submit=True):
                                 col_h1, col_h2 = st.columns([3, 1])
                                 with col_h1:
@@ -816,21 +816,23 @@ elif menu == "👥 Funil de Leads":
                                             "observacao": nova_nota,
                                             "corretor": corretor_nota
                                         }).execute()
-                                        st.success("Anotação salva!")
+                                        st.success("Anotação salva com sucesso!")
                                         st.rerun()
                                     except Exception as e:
                                         st.error(f"Erro ao salvar histórico: {e}")
 
                             st.divider()
 
-                            # Exibir lista de histórico com exclusão corrigida fora/independente do form principal
+                            # Exibir lista de histórico
                             if not historico:
                                 st.caption("Nenhum atendimento registrado até o momento.")
                             else:
                                 for h in historico:
                                     interacao_id = h.get('id')
                                     dt_str = h.get('data_hora', '')
-                                    texto_nota = h.get('observacao') or h.get('anotacao') or 'Sem conteúdo'
+                                    
+                                    # Pega o texto de qualquer uma das colunas possíveis que venham do banco
+                                    texto_nota = h.get('observacao') or h.get('anotacao') or h.get('mensagem') or h.get('resumo') or 'Sem conteúdo'
                                     
                                     if dt_str:
                                         try:
@@ -847,15 +849,18 @@ elif menu == "👥 Funil de Leads":
                                         st.write(f"💬 {texto_nota}")
 
                                     with col_btn:
-                                        # Chave única garantindo o ID da interação e do lead para evitar conflito
-                                        if st.button("🗑️ Excluir", key=f"del_interacao_{lead_id}_{interacao_id}", type="secondary"):
-                                            try:
-                                                supabase.table("interacoes_leads").delete().eq("id", interacao_id).execute()
-                                                limpar_cache()
-                                                st.success("Anotação excluída com sucesso!")
-                                                st.rerun()
-                                            except Exception as e:
-                                                st.error(f"Erro ao excluir: {e}")
+                                        # Botão de exclusão usando o ID UUID real da tabela do Supabase
+                                        if st.button("🗑️ Excluir", key=f"btn_del_interacao_{lead_id}_{interacao_id}", type="secondary"):
+                                            if interacao_id:
+                                                try:
+                                                    supabase.table("interacoes_leads").delete().eq("id", interacao_id).execute()
+                                                    limpar_cache()
+                                                    st.toast("Anotação excluída!")
+                                                    st.rerun()
+                                                except Exception as e:
+                                                    st.error(f"Erro ao excluir: {e}")
+                                            else:
+                                                st.error("ID da anotação não encontrado.")
 
                                     st.divider()
 
