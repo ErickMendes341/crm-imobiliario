@@ -722,8 +722,7 @@ elif menu == "📝 Novo Imóvel":
     if fotos_upload:
         for f in fotos_upload:
             fotos_processadas.append({"nome": f.name, "dados": f.getvalue()})
-
-    if st.button("💾 Salvar Imóvel", use_container_width=True, type="primary"):
+if st.button("💾 Salvar Imóvel", use_container_width=True, type="primary"):
         urls_fotos = []
         if fotos_processadas:
             logo_img = None
@@ -733,6 +732,7 @@ elif menu == "📝 Novo Imóvel":
                 except Exception:
                     logo_img = None
 
+            import time
             for i, foto_dict in enumerate(fotos_processadas):
                 try:
                     img = Image.open(io.BytesIO(foto_dict["dados"])).convert("RGBA")
@@ -761,7 +761,11 @@ elif menu == "📝 Novo Imóvel":
                     img_final.save(buffer_img, format="JPEG", quality=95)
                     bytes_finais = buffer_img.getvalue()
 
-                    caminho_storage = f"imoveis/{codigo_gerado}_{i}_{foto_dict['nome']}"
+                    # Cria um nome único usando timestamp para evitar duplicidade ("image.jpg")
+                    timestamp_unico = int(time.time() * 1000)
+                    nome_limpo = f"foto_{i}_{timestamp_unico}.jpg"
+                    caminho_storage = f"imoveis/{codigo_gerado}_{nome_limpo}"
+                    
                     supabase.storage.from_("fotos-imoveis").upload(caminho_storage, bytes_finais, {"content-type": "image/jpeg"})
                     url_publica = supabase.storage.from_("fotos-imoveis").get_public_url(caminho_storage)
                     urls_fotos.append(url_publica)
