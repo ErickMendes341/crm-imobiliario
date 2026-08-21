@@ -815,7 +815,7 @@ elif menu == "👥 Funil de Leads":
                                         "lead_id": lead_id,
                                         "observacao": nova_nota,
                                         "corretor": corretor_nota,
-                                        "created_at": datetime.now().isoformat()  # Adiciona a data e hora atual automaticamente
+                                        "created_at": (datetime.now() - timedelta(hours=3)).isoformat(),  # Adiciona a data e hora atual automaticamente
                                     }).execute()
                                     st.success("Anotação salva com sucesso!")
                                     st.rerun()
