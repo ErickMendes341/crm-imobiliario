@@ -794,14 +794,15 @@ elif menu == "👥 Funil de Leads":
                                 st.success("Status atualizado!")
                                 st.rerun()
 
-                        # --- HISTÓRICO DE ATENDIMENTO ---
+                      # --- HISTÓRICO DE ATENDIMENTO ---
                         with st.expander(f"📜 Histórico de Atendimentos ({nome_lead})"):
                             historico = carregar_interacoes(lead_id)
                             
+                            # Formulário limpo apenas para adicionar novas notas
                             with st.form(key=f"form_hist_{lead_id}", clear_on_submit=True):
                                 col_h1, col_h2 = st.columns([3, 1])
                                 with col_h1:
-                                    nova_nota = st.text_input("Nova anotação de atendimento", placeholder="Ex: Cliente gostou da casa no Centro, agendou retorno...")
+                                    nova_nota = st.text_input("Nova anotação de atendimento", placeholder="Ex: Cliente gostou da casa no Centro...", key=f"input_nota_{lead_id}")
                                 with col_h2:
                                     corretor_nota = st.selectbox("Corretor", CORRETORES, key=f"corr_hist_{lead_id}")
                                 
@@ -821,7 +822,7 @@ elif menu == "👥 Funil de Leads":
 
                             st.divider()
 
-                            # Exibir lista de histórico com botão de exclusão individual (BLOCO CORRIGIDO)
+                            # Exibir lista de histórico com exclusão corrigida fora/independente do form principal
                             if not historico:
                                 st.caption("Nenhum atendimento registrado até o momento.")
                             else:
@@ -845,10 +846,12 @@ elif menu == "👥 Funil de Leads":
                                         st.write(f"💬 {texto_nota}")
 
                                     with col_btn:
-                                        if st.button("🗑️ Excluir", key=f"del_hist_{interacao_id}", type="secondary"):
+                                        # Chave única garantindo o ID da interação e do lead para evitar conflito
+                                        if st.button("🗑️ Excluir", key=f"del_interacao_{lead_id}_{interacao_id}", type="secondary"):
                                             try:
                                                 supabase.table("interacoes_leads").delete().eq("id", interacao_id).execute()
-                                                st.success("Anotação excluída!")
+                                                limpar_cache()
+                                                st.success("Anotação excluída com sucesso!")
                                                 st.rerun()
                                             except Exception as e:
                                                 st.error(f"Erro ao excluir: {e}")
