@@ -848,18 +848,11 @@ elif menu == "👥 Funil de Leads":
                                     st.write(f"💬 {texto_nota}")
 
                                 with col_btn:
-                                   if st.button("🗑️ Excluir", key=f"btn_del_hist_{lead_id}_{interacao_id}", type="secondary"):
-            if not interacao_id:
-                st.error("ID da anotação não encontrado.")
-            else:
-                try:
-                    supabase.table("interacoes_leads").delete().eq("id", interacao_id).execute()
-                    limpar_cache()
-                    st.toast("Anotação excluída com sucesso!")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Erro ao excluir no banco: {e}")
-                                st.divider()
+                                  if st.button("🗑️ Excluir", key=f"btn_del_hist_{lead_id}_{interacao_id}", type="secondary"):
+                                    supabase.table("interacoes_leads").delete().eq("id", interacao_id).execute()
+                                    limpar_cache()
+                                    st.toast("Anotação excluída com sucesso!")
+                                    st.rerun()
 
                         # Expander de Edição e Exclusão do Lead
                         with st.expander(f"✏️ Editar / 🗑️ Excluir Dados de {nome_lead}"):
