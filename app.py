@@ -867,6 +867,16 @@ elif menu == "👥 Funil de Leads":
                                 limpar_cache()
                                 st.success("Status atualizado!")
                                 st.rerun()
+
+                        # --- BOTÃO DE WHATSAPP DIRETO NO CARD ---
+                        phone_clean = ''.join(filter(str.isdigit, str(whatsapp_lead)))
+                        if phone_clean and not phone_clean.startswith("55"):
+                            phone_clean = f"55{phone_clean}"
+                        
+                        msg_wsp_funil = f"Olá {nome_lead}, aqui é da Mendes & Soares Engenharia e Imóveis. Gostaríamos de dar continuidade ao seu atendimento!"
+                        url_wsp_funil = f"https://wa.me/{phone_clean}?text={urllib.parse.quote(msg_wsp_funil)}"
+                        
+                        st.link_button("💬 Enviar Mensagem no WhatsApp", url_wsp_funil, use_container_width=True)
                                       
                         # Expander de Edição e Exclusão do Lead
                         with st.expander(f"✏️ Editar / 🗑️ Excluir Dados de {nome_lead}"):
