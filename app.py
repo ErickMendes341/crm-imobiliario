@@ -710,40 +710,18 @@ elif menu == "📝 Novo Imóvel":
     descricao = st.text_area("Descrição Geral", value=st.session_state.get('descricao_temp', ''), height=150)
     
     st.markdown("### 📷 Fotos do Imóvel")
-    tipo_envio = st.radio("Selecione a forma de envio das fotos:", ["📂 Enviar arquivos do dispositivo", "📸 Tirar fotos com a Câmera"], horizontal=True)
+    st.info("💡 **Dica mobile:** Clique no botão abaixo para selecionar fotos da galeria ou abrir diretamente a **câmera completa do seu celular** (com controle de zoom, foco e lentes).")
+
+    fotos_upload = st.file_uploader(
+        "Selecione ou tire as fotos do imóvel:", 
+        type=["jpg", "png", "jpeg"], 
+        accept_multiple_files=True
+    )
 
     fotos_processadas = []
-
-    if tipo_envio == "📂 Enviar arquivos do dispositivo":
-        fotos_upload = st.file_uploader("Selecione as fotos", type=["jpg", "png", "jpeg"], accept_multiple_files=True)
-        if fotos_upload:
-            for f in fotos_upload:
-                fotos_processadas.append({"nome": f.name, "dados": f.getvalue()})
-    else:
-        # Câmera em tamanho real e sem compressão prévia inadequada
-        foto_camera = st.camera_input("Tirar foto com a câmera")
-        if foto_camera is not None:
-            if "fotos_camera_lista" not in st.session_state:
-                st.session_state["fotos_camera_lista"] = []
-            
-            # Evita duplicar a mesma foto capturada consecutivamente
-            if not st.session_state["fotos_camera_lista"] or st.session_state["fotos_camera_lista"][-1]["dados"] != foto_camera.getvalue():
-                st.session_state["fotos_camera_lista"].append({
-                    "nome": f"camera_{len(st.session_state['fotos_camera_lista']) + 1}.jpg",
-                    "dados": foto_camera.getvalue()
-                })
-        
-        if "fotos_camera_lista" in st.session_state and st.session_state["fotos_camera_lista"]:
-            st.write(f"📸 **{len(st.session_state['fotos_camera_lista'])} foto(s) capturada(s) via câmera:**")
-            cols_cam = st.columns(min(len(st.session_state["fotos_camera_lista"]), 4))
-            for idx, item_cam in enumerate(st.session_state["fotos_camera_lista"]):
-                with cols_cam[idx % 4]:
-                    st.image(item_cam["dados"], width=120)
-                    if st.button("❌ Remover", key=f"del_cam_{idx}"):
-                        st.session_state["fotos_camera_lista"].pop(idx)
-                        st.rerun()
-            
-            fotos_processadas.extend(st.session_state["fotos_camera_lista"])
+    if fotos_upload:
+        for f in fotos_upload:
+            fotos_processadas.append({"nome": f.name, "dados": f.getvalue()})
 
     if st.button("💾 Salvar Imóvel", use_container_width=True, type="primary"):
         urls_fotos = []
@@ -761,7 +739,7 @@ elif menu == "📝 Novo Imóvel":
                     img_w, img_h = img.size
 
                     if logo_img:
-                        # Redimensiona a logo proporcionalmente (ex: ~18% da largura da imagem original)
+                        # Redimensiona a logo proporcionalmente (~18% da largura da foto original)
                         target_logo_width = int(img_w * 0.18)
                         aspect_ratio = logo_img.height / logo_img.width
                         target_logo_height = int(target_logo_width * aspect_ratio)
@@ -774,7 +752,7 @@ elif menu == "📝 Novo Imóvel":
                         pos_x = img_w - target_logo_width - margin_x
                         pos_y = img_h - target_logo_height - margin_y
                         
-                        # Aplica a marca d'água utilizando o canal alfa para transparência correta
+                        # Aplica a marca d'água utilizando o canal alfa
                         img.paste(logo_resized, (pos_x, pos_y), logo_resized)
                     
                     # Salva em JPEG mantendo a qualidade alta
@@ -804,8 +782,6 @@ elif menu == "📝 Novo Imóvel":
         try:
             supabase.table("imoveis").insert(dados_imovel).execute()
             limpar_cache()
-            if "fotos_camera_lista" in st.session_state:
-                del st.session_state["fotos_camera_lista"]
             st.success(f"✅ Imóvel **{codigo_gerado}** cadastrado com sucesso!")
             if 'descricao_temp' in st.session_state: del st.session_state['descricao_temp']
             st.rerun()
