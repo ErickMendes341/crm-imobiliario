@@ -2,7 +2,7 @@ import streamlit as st
 from supabase import create_client
 import urllib.parse
 import os
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 # --- IMPORTAÇÃO PARA IA ---
 from google import genai
