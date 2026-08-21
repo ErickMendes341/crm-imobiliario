@@ -794,6 +794,11 @@ elif menu == "👥 Funil de Leads":
                                 st.success("Status atualizado!")
                                 st.rerun()
 
+                     No seu arquivo atual (`app (20).py`), você deve substituir da **linha 742 até a linha 813** pelo código corrigido abaixo.
+
+Veja exatamente o trecho que você precisa apagar e substituir no seu arquivo:
+
+```python
                       # --- HISTÓRICO DE ATENDIMENTO ---
                         with st.expander(f"📜 Histórico de Atendimentos ({nome_lead})"):
                             historico = carregar_interacoes(lead_id)
