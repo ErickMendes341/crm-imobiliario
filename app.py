@@ -859,7 +859,6 @@ elif menu == "👥 Funil de Leads":
                     st.rerun()
                 except Exception as e:
                     st.error(f"Erro ao excluir no banco: {e}")
-
                                 st.divider()
 
                         # Expander de Edição e Exclusão do Lead
