@@ -814,7 +814,8 @@ elif menu == "👥 Funil de Leads":
                                     supabase.table("interacoes_leads").insert({
                                         "lead_id": lead_id,
                                         "observacao": nova_nota,
-                                        "corretor": corretor_nota
+                                        "corretor": corretor_nota,
+                                        "created_at": datetime.now().isoformat()  # Adiciona a data e hora atual automaticamente
                                     }).execute()
                                     st.success("Anotação salva com sucesso!")
                                     st.rerun()
@@ -829,7 +830,7 @@ elif menu == "👥 Funil de Leads":
                         else:
                             for h in historico:
                                 interacao_id = h.get('id')
-                                dt_str = h.get('data_hora', '')
+                                dt_str = h.get('created_at', '')
                                 
                                 texto_nota = h.get('observacao') or h.get('anotacao') or h.get('mensagem') or h.get('resumo') or 'Sem conteúdo'
                                 
