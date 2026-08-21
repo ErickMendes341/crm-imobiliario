@@ -844,8 +844,11 @@ elif menu == "👥 Funil de Leads":
                     else:
                         tipos_lead = []
 
-                    # --- EXPANSOR NO MESMO FORMATO DO ENTRAR MATCHES ---
-                    with st.expander(f"👤 **{nome_lead}** — 📱 {whatsapp_lead} | 💰 R$ {orc_lead:,.2f}"):
+                    # Montar string de bairros para o título do expansor
+                    bairros_str_titulo = ", ".join(bairros_lead) if bairros_lead else "Todos os bairros"
+
+                    # --- EXPANSOR COM NOME, VALOR E BAIRROS NO TÍTULO ---
+                    with st.expander(f"👤 **{nome_lead}** | 💰 R$ {orc_lead:,.2f} | 📍 {bairros_str_titulo}"):
                         with st.container():
                             st.markdown('<div class="stCard">', unsafe_allow_html=True)
                             c1, c2 = st.columns([2.5, 1.5])
