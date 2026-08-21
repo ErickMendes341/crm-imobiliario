@@ -313,7 +313,7 @@ def gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor):
 
     prompt = f"""
     Você é um copywriter especialista no mercado imobiliário da Mendes & Soares Engenharia e Imóveis.
-    Escreva uma descrição comercial altamente atraente e facil leitura usando o iconem para separar bem as caracteriscas do imovel, não incluir telefone e site para o seguinte imóvel:
+    Escreva uma descrição comercial altamente atraente e fácil leitura usando ícones para separar bem as características do imóvel, não incluir telefone e site para o seguinte imóvel:
     - Tipo: {tipo}
     - Bairro: {bairro} (Passos-MG)
     - Quartos: {quartos} (sendo {suites} suítes)
@@ -720,6 +720,7 @@ elif menu == "📝 Novo Imóvel":
             for f in fotos_upload:
                 fotos_processadas.append({"nome": f.name, "dados": f.getvalue()})
     else:
+        # Câmera em tamanho real e sem compressão prévia inadequada
         foto_camera = st.camera_input("Tirar foto com a câmera")
         if foto_camera is not None:
             if "fotos_camera_lista" not in st.session_state:
@@ -757,28 +758,26 @@ elif menu == "📝 Novo Imóvel":
             for i, foto_dict in enumerate(fotos_processadas):
                 try:
                     img = Image.open(io.BytesIO(foto_dict["dados"])).convert("RGBA")
-                    
-                    # Mantém o tamanho real da imagem original tirada pela câmera ou enviada
                     img_w, img_h = img.size
 
                     if logo_img:
-                        # Ajusta o tamanho da logo proporcionalmente à foto (ex: cerca de 18% da largura da foto)
+                        # Redimensiona a logo proporcionalmente (ex: ~18% da largura da imagem original)
                         target_logo_width = int(img_w * 0.18)
                         aspect_ratio = logo_img.height / logo_img.width
                         target_logo_height = int(target_logo_width * aspect_ratio)
                         
                         logo_resized = logo_img.resize((target_logo_width, target_logo_height), Image.Resampling.LANCZOS)
                         
-                        # Margem de posicionamento no canto inferior direito
+                        # Margens proporcionais no canto inferior direito
                         margin_x = int(img_w * 0.03)
                         margin_y = int(img_h * 0.03)
                         pos_x = img_w - target_logo_width - margin_x
                         pos_y = img_h - target_logo_height - margin_y
                         
-                        # Aplica a marca d'água preservando a transparência
+                        # Aplica a marca d'água utilizando o canal alfa para transparência correta
                         img.paste(logo_resized, (pos_x, pos_y), logo_resized)
                     
-                    # Salva em formato JPEG com alta qualidade mantendo as dimensões reais
+                    # Salva em JPEG mantendo a qualidade alta
                     img_final = img.convert("RGB")
                     buffer_img = io.BytesIO()
                     img_final.save(buffer_img, format="JPEG", quality=95)
@@ -1155,7 +1154,7 @@ elif menu == "🎯 Encontrar Matches":
                             with c_badge:
                                 st.markdown(f'<span class="price-badge">R$ {valor_imovel:,.2f}</span>', unsafe_allow_html=True)
                             
-                            st.link_button("📲 Enviar no WhatsApp do Lead", url_whatsapp, type="primary", use_container_width=True)
+                            st.link_button("📲 Enviar no WhatsApp du Lead", url_whatsapp, type="primary", use_container_width=True)
 
                             opcoes_status = ["⚪ Não Enviado", "👁️ Visto", "❌ Sem Interesse", "📅 Visita Agendada"]
                             
