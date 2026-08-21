@@ -572,8 +572,81 @@ elif menu == "📋 Imóveis Cadastrados":
                         st.success(f"Status atualizado para: **{novo_status}**!")
                         st.rerun()
 
-                with st.expander(f"🗑️ Excluir / ✏️ Editar Imóvel {cod_imovel}"):
-                    if st.button("🚨 Excluir Definitivamente", key=f"btn_del_{imovel_id}", type="primary"):
+                with st.expander(f"✏️ Editar / 🗑️ Excluir Imóvel {cod_imovel}"):
+                    with st.form(key=f"form_edit_imovel_{imovel_id}"):
+                        st.markdown("##### 📝 Atualizar Dados do Imóvel")
+                        
+                        ed_i1, ed_i2, ed_i3 = st.columns(3)
+                        with ed_i1:
+                            idx_tipo = OPCOES_TIPO_IMOVEL.index(imovel.get('tipo')) if imovel.get('tipo') in OPCOES_TIPO_IMOVEL else 0
+                            novo_tipo = st.selectbox("Tipo de Imóvel", OPCOES_TIPO_IMOVEL, index=idx_tipo, key=f"edit_tipo_{imovel_id}")
+                            
+                            bairro_atual = imovel.get('bairro')
+                            idx_bairro = BAIRROS_PASSOS.index(bairro_atual) if bairro_atual in BAIRROS_PASSOS else 0
+                            novo_bairro = st.selectbox("Bairro", BAIRROS_PASSOS, index=idx_bairro, key=f"edit_bairro_{imovel_id}")
+                            
+                            novo_corretor = st.selectbox("Corretor Captação", CORRETORES, index=CORRETORES.index(imovel.get('corretor_captacao')) if imovel.get('corretor_captacao') in CORRETORES else 0, key=f"edit_corretor_{imovel_id}")
+
+                        with ed_i2:
+                            novo_valor_venda = st.number_input("Valor de Venda (R$)", value=float(imovel.get('valor_venda', 0.0)), step=10000.0, key=f"edit_valor_{imovel_id}")
+                            novo_endereco = st.text_input("Endereço", value=imovel.get('endereco', ''), key=f"edit_end_{imovel_id}")
+                            novo_nome_prop = st.text_input("Nome Proprietário", value=imovel.get('nome_proprietario', ''), key=f"edit_prop_{imovel_id}")
+
+                        with ed_i3:
+                            novo_tel_prop = st.text_input("Telefone Proprietário", value=imovel.get('telefone_proprietario', ''), key=f"edit_tel_{imovel_id}")
+                            novo_lote = st.number_input("Lote (m²)", value=float(imovel.get('area_terreno', 0.0)), step=10.0, key=f"edit_lote_{imovel_id}")
+                            novo_const = st.number_input("Área Construída (m²)", value=float(imovel.get('area_construida', 0.0)), step=10.0, key=f"edit_const_{imovel_id}")
+
+                        ed_i4, ed_i5, ed_i6, ed_i7 = st.columns(4)
+                        with ed_i4: novo_quartos = st.number_input("Quartos", value=int(imovel.get('quartos', 0)), min_value=0, key=f"edit_qtos_{imovel_id}")
+                        with ed_i5: novo_suites = st.number_input("Suítes", value=int(imovel.get('suites', 0)), min_value=0, key=f"edit_suites_{imovel_id}")
+                        with ed_i6: novo_banheiros = st.number_input("Banheiros", value=int(imovel.get('banheiros', 0)), min_value=0, key=f"edit_bans_{imovel_id}")
+                        with ed_i7: novo_vagas = st.number_input("Vagas", value=int(imovel.get('vagas_garagem', 0)), min_value=0, key=f"edit_vagas_{imovel_id}")
+
+                        chk1, chk2 = st.columns(2)
+                        with chk1:
+                            nova_garagem_cob = st.checkbox("Garagem Coberta", value=bool(imovel.get('garagem_coberta', False)), key=f"edit_gco_{imovel_id}")
+                            nova_area_gourmet = st.checkbox("Área Gourmet", value=bool(imovel.get('area_gourmet', False)), key=f"edit_agourm_{imovel_id}")
+                        with chk2:
+                            nova_sala = st.checkbox("Sala", value=bool(imovel.get('sala', True)), key=f"edit_sala_{imovel_id}")
+                            nova_cozinha = st.checkbox("Cozinha", value=bool(imovel.get('cozinha', True)), key=f"edit_coz_{imovel_id}")
+
+                        nova_descricao = st.text_area("Descrição", value=imovel.get('descricao', ''), key=f"edit_desc_{imovel_id}")
+
+                        btn_salvar_edicao = st.form_submit_button("💾 Salvar Alterações do Imóvel", type="primary", use_container_width=True)
+
+                        if btn_salvar_edicao:
+                            dados_atualizados_imovel = {
+                                "tipo": novo_tipo,
+                                "bairro": novo_bairro,
+                                "corretor_captacao": novo_corretor,
+                                "valor_venda": novo_valor_venda,
+                                "endereco": novo_endereco,
+                                "nome_proprietario": novo_nome_prop,
+                                "telefone_proprietario": novo_tel_prop,
+                                "area_terreno": novo_lote,
+                                "area_construida": novo_const,
+                                "quartos": novo_quartos,
+                                "suites": novo_suites,
+                                "banheiros": novo_banheiros,
+                                "vagas_garagem": novo_vagas,
+                                "garagem_coberta": nova_garagem_cob,
+                                "area_gourmet": nova_area_gourmet,
+                                "sala": nova_sala,
+                                "cozinha": nova_cozinha,
+                                "descricao": nova_descricao
+                            }
+                            try:
+                                supabase.table("imoveis").update(dados_atualizados_imovel).eq("id", imovel_id).execute()
+                                limpar_cache()
+                                st.success("Imóvel atualizado com sucesso!")
+                                st.rerun()
+                            except Exception as err:
+                                st.error(f"Erro ao atualizar imóvel: {err}")
+
+                    st.divider()
+                    st.markdown("##### 🚨 Zona de Exclusão")
+                    if st.button("🗑️ Excluir Definitivamente", key=f"btn_del_{imovel_id}", type="secondary", use_container_width=True):
                         supabase.table("imoveis").delete().eq("id", imovel_id).execute()
                         limpar_cache()
                         st.success("Imóvel removido!")
@@ -1059,4 +1132,3 @@ elif menu == "📅 Visitas Agendadas":
                 limpar_cache()
                 st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
-            
