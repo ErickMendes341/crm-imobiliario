@@ -313,7 +313,7 @@ def gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor):
 
     prompt = f"""
     Você é um copywriter especialista no mercado imobiliário da Mendes & Soares Engenharia e Imóveis.
-    Escreva uma descrição comercial altamente atraente e fácil leitura usando ícones para separar bem as características do imóvel, não incluir telefone e site para o seguinte imóvel:
+    Escreva uma descrição comercial altamente atraente e fácil leitura usando ícones para separar bem as características do imóvel, não incluir telefone e site para o seguinte imóvel colocar em destaque valor e bairro do imovel:
     - Tipo: {tipo}
     - Bairro: {bairro} (Passos-MG)
     - Quartos: {quartos} (sendo {suites} suítes)
@@ -327,7 +327,7 @@ def gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor):
     for tentativa in range(tentativas):
         try:
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3.6-flash",
                 contents=prompt,
             )
             return response.text
