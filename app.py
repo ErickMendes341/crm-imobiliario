@@ -539,7 +539,7 @@ if menu == "📊 Dashboard":
     with col1:
         st.metric(label="🏠 Imóveis Disponíveis", value=len(imoveis_disponiveis))
         if st.button("Ver Imóveis ➔", use_container_width=True, key="btn_dash_imoveis"):
-            st.session_state["menu_ativo"] = "📋 Imóveis Cadastrados"
+            st.session_state["menu_ativo"] = " Imóveis Cadastrados"
             st.rerun()
 
     with col2:
