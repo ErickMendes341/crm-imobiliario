@@ -6,6 +6,22 @@ from datetime import date, datetime, timedelta
 from PIL import Image, ImageOps
 import io
 
+st.markdown(
+    """
+    <style>
+    /* Garante que imagens e o input da câmera se ajustem à tela do celular */
+    img {
+        max-width: 100%;
+        height: auto;
+    }
+    .stCameraInput div {
+        max-width: 100%;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 # --- IMPORTAÇÃO PARA IA ---
 from google import genai
 
