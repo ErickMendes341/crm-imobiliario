@@ -481,21 +481,6 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # --- MENU LATERAL ---
-if "menu_ativo" not in st.session_state:
-    st.session_state["menu_ativo"] = "📊 Dashboard"
-
-menu_opcoes = [
-    "📊 Dashboard", 
-    "📋 Imóveis Cadastrados", 
-    "📝 Novo Imóvel", 
-    "👤 Novo Lead", 
-    "👥 Funil de Leads", 
-    "🎯 Encontrar Matches",
-    "📅 Visitas Agendadas"
-]
-
-indice_atual = menu_opcoes.index(st.session_state["menu_ativo"]) if st.session_state["menu_ativo"] in menu_opcoes else 0
-
 with st.sidebar:
     if os.path.exists("logo.png"):
         st.image("logo.png", use_container_width=True)
@@ -507,9 +492,16 @@ with st.sidebar:
 
     menu = st.radio(
         "Navegação do Sistema:",
-        menu_opcoes,
-        index=indice_atual,
-        key="menu_ativo"
+        [
+            "📊 Dashboard", 
+            "📋 Imóveis Cadastrados", 
+            "📝 Novo Imóvel", 
+            "👤 Novo Lead", 
+            "👥 Funil de Leads", 
+            "🎯 Encontrar Matches",
+            "📅 Visitas Agendadas"
+        ],
+        index=0
     )
 
     st.divider()
@@ -536,35 +528,11 @@ if menu == "📊 Dashboard":
     total_matches = calcular_total_matches(imoveis_data, leads_data)
     leads_fechados = [l for l in leads_data if MAPEAMENTO_STATUS.get(l.get('status'), l.get('status')) == '🟢 Já comprou (Fechado)']
     
-    with col1:
-        st.metric(label="🏠 Imóveis Disponíveis", value=len(imoveis_disponiveis))
-        if st.button("Ver Imóveis ➔", use_container_width=True, key="btn_dash_imoveis"):
-            st.session_state["menu_ativo"] = " Imóveis Cadastrados"
-            st.rerun()
-
-    with col2:
-        st.metric(label="👥 Leads em Negociação", value=len(leads_em_negociacao))
-        if st.button("Ver Funil ➔", use_container_width=True, key="btn_dash_leads"):
-            st.session_state["menu_ativo"] = "👥 Funil de Leads"
-            st.rerun()
-
-    with col3:
-        st.metric(label="🎯 Matches Ativos", value=total_matches)
-        if st.button("Ver Matches ➔", use_container_width=True, key="btn_dash_matches"):
-            st.session_state["menu_ativo"] = "🎯 Encontrar Matches"
-            st.rerun()
-
-    with col4:
-        st.metric(label="📅 Visitas Agendadas", value=len(visitas_pendentes))
-        if st.button("Ver Visitas ➔", use_container_width=True, key="btn_dash_visitas"):
-            st.session_state["menu_ativo"] = "📅 Visitas Agendadas"
-            st.rerun()
-
-    with col5:
-        st.metric(label="🎉 Vendas Concluídas", value=len(leads_fechados))
-        if st.button("Ver Fechados ➔", use_container_width=True, key="btn_dash_vendas"):
-            st.session_state["menu_ativo"] = "👥 Funil de Leads"
-            st.rerun()
+    with col1: st.metric(label="🏠 Imóveis Disponíveis", value=len(imoveis_disponiveis))
+    with col2: st.metric(label="👥 Leads em Negociação", value=len(leads_em_negociacao))
+    with col3: st.metric(label="🎯 Matches Ativos", value=total_matches)
+    with col4: st.metric(label="📅 Visitas Agendadas", value=len(visitas_pendentes))
+    with col5: st.metric(label="🎉 Vendas Concluídas", value=len(leads_fechados))
 
 # ==========================================
 # 📋 ABA 2: IMÓVEIS CADASTRADOS
