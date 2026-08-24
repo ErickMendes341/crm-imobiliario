@@ -6,22 +6,6 @@ from datetime import date, datetime, timedelta
 from PIL import Image, ImageOps
 import io
 
-st.markdown(
-    """
-    <style>
-    /* Garante que imagens e o input da câmera se ajustem à tela do celular */
-    img {
-        max-width: 100%;
-        height: auto;
-    }
-    .stCameraInput div {
-        max-width: 100%;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
 # --- IMPORTAÇÃO PARA IA ---
 from google import genai
 
@@ -738,7 +722,8 @@ elif menu == "📝 Novo Imóvel":
     if fotos_upload:
         for f in fotos_upload:
             fotos_processadas.append({"nome": f.name, "dados": f.getvalue()})
-if st.button("💾 Salvar Imóvel", use_container_width=True, type="primary"):
+
+    if st.button("💾 Salvar Imóvel", use_container_width=True, type="primary"):
         urls_fotos = []
         if fotos_processadas:
             logo_img = None
@@ -755,29 +740,24 @@ if st.button("💾 Salvar Imóvel", use_container_width=True, type="primary"):
                     img_w, img_h = img.size
 
                     if logo_img:
-                        # Redimensiona a logo proporcionalmente (~18% da largura da foto original)
                         target_logo_width = int(img_w * 0.18)
                         aspect_ratio = logo_img.height / logo_img.width
                         target_logo_height = int(target_logo_width * aspect_ratio)
                         
                         logo_resized = logo_img.resize((target_logo_width, target_logo_height), Image.Resampling.LANCZOS)
                         
-                        # Margens proporcionais no canto inferior direito
                         margin_x = int(img_w * 0.03)
                         margin_y = int(img_h * 0.03)
                         pos_x = img_w - target_logo_width - margin_x
                         pos_y = img_h - target_logo_height - margin_y
                         
-                        # Aplica a marca d'água utilizando o canal alfa
                         img.paste(logo_resized, (pos_x, pos_y), logo_resized)
                     
-                    # Salva em JPEG mantendo a qualidade alta
                     img_final = img.convert("RGB")
                     buffer_img = io.BytesIO()
                     img_final.save(buffer_img, format="JPEG", quality=95)
                     bytes_finais = buffer_img.getvalue()
 
-                    # Cria um nome único usando timestamp para evitar duplicidade ("image.jpg")
                     timestamp_unico = int(time.time() * 1000)
                     nome_limpo = f"foto_{i}_{timestamp_unico}.jpg"
                     caminho_storage = f"imoveis/{codigo_gerado}_{nome_limpo}"
