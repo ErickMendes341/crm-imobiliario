@@ -116,13 +116,13 @@ st.set_page_config(
 # --- LISTA DE BAIRROS DE PASSOS - MG ---
 BAIRROS_PASSOS = sorted([
     "Aclimação", "Alto dos Maias", "Alvorada", "Antenas", "Aroeiras",
-    "Bela Vista 1 e 2", "Belo Horizonte", "Califórnia", "Canadá 1, 2 e 3",
+    "Bela Vista 1 e 2", "Belo Horizonte", "Califórnia", "Canadá",
     "Canjeranus", "Carmelo", "Centro", "Cohab 4", "Cohab 5", "Coimbras",
     "Condomínio da Nações", "Condomínio Monte Belo", "Eldorado", "Exposição",
     "Flamboyant", "Jacarandá", "Jardim América", "Jardim Cidade",
-    "Jardim Colégio de Passos", "Jardim Europa", "Jardim Florença",
+    "Jardim Colégio de Passos", "Jardim Italia", "Jardim Europa", "Jardim Florença",
     "Jardim dos Lagos", "Mirante do Vale", "Muarama", "Nossa Senhora das Graças",
-    "Nova California", "Nova Passos", "Novo Horizonte", "Nsa de Fátima",
+    "Nova California", "Nova Passos", "Nova Suiça", "Novo Horizonte", "Nsa de Fátima",
     "Panorama", "Parque das Oliveiras", "Penha", "Penha 2", "Planalto",
     "Polivalente", "Primavera", "Recanto do Bosque", "Santa Luzia", "São Benedito",
     "São Francisco", "Tropical", "Vale Verde 1 e 2", "Vilagio D´Italia", "Vila Rica"
