@@ -375,7 +375,7 @@ def gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor):
     for tentativa in range(tentativas):
         try:
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3.6-flash",
                 contents=prompt,
             )
             return response.text
