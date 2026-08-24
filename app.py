@@ -184,16 +184,40 @@ def renderizar_carrossel_swiper(fotos_urls, altura_px=320, id_prefixo="swiper"):
     if not fotos_urls:
         return '<div style="background:#e2e8f0; height:200px; border-radius:12px; display:flex; align-items:center; justify-content:center; color:#64748b;">Sem fotos cadastradas</div>'
     
-    slides_html = "".join([f'<div class="swiper-slide"><img src="{url}" style="width:100%; border-radius:12px; height:{altura_px}px; object-fit:cover;"></div>' for url in fotos_urls])
+    slides_html = "".join([f'<div class="swiper-slide"><img src="{url}" onclick="abrirModalFoto(\'{url}\')" style="width:100%; border-radius:12px; height:{altura_px}px; object-fit:cover; cursor:pointer;" title="Clique para expandir"></div>' for url in fotos_urls])
     
     swiper_code = f"""
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
     <style>
-        body {{ margin: 0; background-color: transparent; }}
+        body {{ margin: 0; background-color: transparent; font-family: sans-serif; }}
         .swiper {{ width: 100%; height: {altura_px}px; border-radius: 12px; }}
         .swiper-button-next, .swiper-button-prev {{ color: #c59b27; }}
         .swiper-pagination-bullet-active {{ background: #c59b27; }}
+        
+        /* Modal de Zoom e Download */
+        #modalZoom_{id_prefixo} {{
+            display: none; position: fixed; z-index: 99999; left: 0; top: 0;
+            width: 100%; height: 100%; background-color: rgba(0,0,0,0.85);
+            align-items: center; justify-content: center; flex-direction: column;
+        }}
+        #modalZoom_{id_prefixo} img {{
+            max-width: 90%; max-height: 80vh; border-radius: 8px; object-fit: contain; box-shadow: 0 5px 25px rgba(0,0,0,0.5);
+        }}
+        .modal-acoes-bar {{
+            margin-top: 15px; display: flex; gap: 15px;
+        }}
+        .btn-modal-acao {{
+            background-color: #c59b27; color: white; padding: 10px 20px;
+            border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3); border: none; cursor: pointer;
+        }}
+        .btn-modal-acao:hover {{ background-color: #a37f1e; }}
+        .btn-fechar-modal {{
+            background-color: #e11d48;
+        }}
+        .btn-fechar-modal:hover {{ background-color: #be123c; }}
     </style>
+
     <div class="swiper {id_prefixo}">
         <div class="swiper-wrapper">
             {slides_html}
@@ -202,6 +226,16 @@ def renderizar_carrossel_swiper(fotos_urls, altura_px=320, id_prefixo="swiper"):
         <div class="swiper-button-prev"></div>
         <div class="swiper-button-next"></div>
     </div>
+
+    <!-- Modal Container -->
+    <div id="modalZoom_{id_prefixo}">
+        <img id="imgZoom_{id_prefixo}" src="">
+        <div class="modal-acoes-bar">
+            <a id="btnDownload_{id_prefixo}" href="" download="imovel_foto.jpg" target="_blank" class="btn-modal-acao">📥 Baixar Foto</a>
+            <button onclick="fecharModalFoto(\'{id_prefixo}\')" class="btn-modal-acao btn-fechar-modal">❌ Fechar</button>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
     <script>
         new Swiper('.{id_prefixo}', {{
@@ -209,6 +243,20 @@ def renderizar_carrossel_swiper(fotos_urls, altura_px=320, id_prefixo="swiper"):
             pagination: {{ el: '.swiper-pagination', clickable: true }},
             navigation: {{ nextEl: '.swiper-button-next', prevEl: '.swiper-button-prev' }},
         }});
+
+        function abrirModalFoto(url) {{
+            const modal = document.getElementById('modalZoom_{id_prefixo}');
+            const img = document.getElementById('imgZoom_{id_prefixo}');
+            const btn = document.getElementById('btnDownload_{id_prefixo}');
+            
+            modal.style.display = 'flex';
+            img.src = url;
+            btn.href = url;
+        }}
+
+        function fecharModalFoto(id) {{
+            document.getElementById('modalZoom_' + id).style.display = 'none';
+        }}
     </script>
     """
     return swiper_code
@@ -267,7 +315,7 @@ if "imovel" in query_params:
         fotos_cli = imovel_cli.get("fotos_urls") or []
         if fotos_cli:
             html_swiper = renderizar_carrossel_swiper(fotos_cli, altura_px=320, id_prefixo="swiper-cli")
-            st.components.v1.html(html_swiper, height=330)
+            st.components.v1.html(html_swiper, height=350)
         else:
             st.info("Nenhuma foto cadastrada para este imóvel.")
 
@@ -327,7 +375,7 @@ def gerar_descricao_ia(tipo, bairro, quartos, suites, vagas, valor):
     for tentativa in range(tentativas):
         try:
             response = client.models.generate_content(
-                model="gemini-3.6-flash",
+                model="gemini-2.5-flash",
                 contents=prompt,
             )
             return response.text
@@ -540,7 +588,7 @@ elif menu == "📋 Imóveis Cadastrados":
                     fotos_urls = imovel.get("fotos_urls") or []
                     if fotos_urls:
                         html_swiper_card = renderizar_carrossel_swiper(fotos_urls, altura_px=240, id_prefixo=f"swiper-{imovel_id}")
-                        st.components.v1.html(html_swiper_card, height=250)
+                        st.components.v1.html(html_swiper_card, height=270)
                     else:
                         st.image("https://via.placeholder.com/400x300?text=Mendes+%26+Soares", use_container_width=True)
                 
@@ -1114,7 +1162,7 @@ elif menu == "🎯 Encontrar Matches":
                         msg_whatsapp = (
                             f"Olá {nome_lead}, nosso algoritmo identificou que este imóvel tem {prob}% de probabilidade "
                             f"de se encaixar perfeitamente no seu perfil e recomenda esta opção para você! "
-                            f"Posso te enviar o link com as fotos e agendarmos uma visita?"
+                            f"Posso te enviar o link com las fotos e agendarmos uma visita?"
                         )
                         
                         url_whatsapp = f"https://wa.me/{phone_clean}?text={urllib.parse.quote(msg_whatsapp)}"
@@ -1130,7 +1178,7 @@ elif menu == "🎯 Encontrar Matches":
                             with c_badge:
                                 st.markdown(f'<span class="price-badge">R$ {valor_imovel:,.2f}</span>', unsafe_allow_html=True)
                             
-                            st.link_button("📲 Enviar no WhatsApp du Lead", url_whatsapp, type="primary", use_container_width=True)
+                            st.link_button("📲 Enviar no WhatsApp do Lead", url_whatsapp, type="primary", use_container_width=True)
 
                             opcoes_status = ["⚪ Não Enviado", "👁️ Visto", "❌ Sem Interesse", "📅 Visita Agendada"]
                             
