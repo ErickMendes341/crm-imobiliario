@@ -5,6 +5,7 @@ import os
 from datetime import date, datetime, timedelta
 from PIL import Image, ImageOps
 import io
+from streamlit_cookies_controller import CookieController
 
 # --- IMPORTAÇÃO PARA IA ---
 from google import genai
@@ -366,6 +367,15 @@ if "imovel" in query_params:
 # ==========================================
 # A página pública do imóvel (acima) não passa por aqui.
 # Tudo depois deste ponto (dashboard, leads, etc) exige login.
+#
+# "Lembrar de mim": guardamos o refresh_token num cookie do navegador
+# (válido por 30 dias). Assim, abrir o app de novo no celular não pede
+# login toda vez — só quando o cookie expirar ou o usuário sair manualmente.
+NOME_COOKIE_SESSAO = "ms_refresh_token"
+DIAS_LEMBRAR_LOGIN = 30
+
+cookies = CookieController()
+
 
 def tela_login():
     st.markdown(
@@ -386,6 +396,7 @@ def tela_login():
     with st.form("form_login"):
         email = st.text_input("E-mail")
         senha = st.text_input("Senha", type="password")
+        manter_conectado = st.checkbox("Manter conectado neste aparelho", value=True)
         entrar = st.form_submit_button("Entrar", use_container_width=True, type="primary")
 
         if entrar:
@@ -399,6 +410,12 @@ def tela_login():
                     st.session_state["auth_user_email"] = resposta.user.email
                     st.session_state["auth_access_token"] = resposta.session.access_token
                     st.session_state["auth_refresh_token"] = resposta.session.refresh_token
+                    if manter_conectado:
+                        cookies.set(
+                            NOME_COOKIE_SESSAO,
+                            resposta.session.refresh_token,
+                            max_age=60 * 60 * 24 * DIAS_LEMBRAR_LOGIN,
+                        )
                     st.rerun()
                 except Exception:
                     st.error("E-mail ou senha inválidos.")
@@ -411,8 +428,34 @@ def logout():
         pass
     for chave in ["auth_user_email", "auth_access_token", "auth_refresh_token"]:
         st.session_state.pop(chave, None)
+    try:
+        cookies.remove(NOME_COOKIE_SESSAO)
+    except Exception:
+        pass
     st.rerun()
 
+
+# Tenta restaurar a sessão automaticamente a partir do cookie salvo,
+# antes de mostrar a tela de login (é isso que evita pedir senha toda vez).
+if "auth_access_token" not in st.session_state:
+    refresh_token_salvo = cookies.get(NOME_COOKIE_SESSAO)
+    if refresh_token_salvo:
+        try:
+            resposta = supabase.auth.refresh_session(refresh_token_salvo)
+            st.session_state["auth_user_email"] = resposta.user.email
+            st.session_state["auth_access_token"] = resposta.session.access_token
+            st.session_state["auth_refresh_token"] = resposta.session.refresh_token
+            # Supabase rotaciona o refresh_token a cada uso — salva o novo.
+            cookies.set(
+                NOME_COOKIE_SESSAO,
+                resposta.session.refresh_token,
+                max_age=60 * 60 * 24 * DIAS_LEMBRAR_LOGIN,
+            )
+        except Exception:
+            try:
+                cookies.remove(NOME_COOKIE_SESSAO)
+            except Exception:
+                pass
 
 if "auth_access_token" not in st.session_state:
     tela_login()
