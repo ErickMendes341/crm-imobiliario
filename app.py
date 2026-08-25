@@ -129,8 +129,22 @@ BAIRROS_PASSOS = sorted([
 ])
 
 # --- CONEXÃO SUPABASE ---
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://dsnamhmffvjxcfqtlzet.supabase.co")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbmFtaG1mZnZqeGNmcXRsemV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxMzYwOTYsImV4cCI6MjEwMTcxMjA5Nn0.e9Uqxp0qv_ifezQ29q-7qcAKmBmzo7-wD5GwK-Bxqts")
+# IMPORTANTE: sem valor padrão aqui de propósito. A chave e a URL devem
+# vir sempre de st.secrets (Streamlit Cloud) ou de variável de ambiente,
+# nunca escritas direto no código-fonte.
+try:
+    SUPABASE_URL = st.secrets["SUPABASE_URL"]
+    SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+except Exception:
+    SUPABASE_URL = os.environ.get("SUPABASE_URL")
+    SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+
+if not SUPABASE_URL or not SUPABASE_KEY:
+    st.error(
+        "⚠️ Configuração ausente: defina SUPABASE_URL e SUPABASE_KEY em "
+        "'App settings → Secrets' (Streamlit Cloud) ou como variáveis de ambiente."
+    )
+    st.stop()
 
 @st.cache_resource
 def init_supabase():
@@ -347,6 +361,77 @@ if "imovel" in query_params:
         st.error("Imóvel não encontrado.")
         st.stop()
 
+# ==========================================
+# 🔐 AUTENTICAÇÃO — A PARTIR DAQUI É SÓ PAINEL INTERNO
+# ==========================================
+# A página pública do imóvel (acima) não passa por aqui.
+# Tudo depois deste ponto (dashboard, leads, etc) exige login.
+
+def tela_login():
+    st.markdown(
+        f"""
+        <style>
+            [data-testid="stSidebar"] {{display: none !important;}}
+            .stApp {{ max-width: 420px; margin: 80px auto 0 auto; }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+    if os.path.exists("logo.png"):
+        st.image("logo.png", width=140)
+    st.markdown(f"<h2 style='color:{COR_DOURADO};'>MENDES & SOARES</h2>", unsafe_allow_html=True)
+    st.caption("Acesso restrito — painel administrativo")
+    st.divider()
+
+    with st.form("form_login"):
+        email = st.text_input("E-mail")
+        senha = st.text_input("Senha", type="password")
+        entrar = st.form_submit_button("Entrar", use_container_width=True, type="primary")
+
+        if entrar:
+            if not email or not senha:
+                st.error("Preencha e-mail e senha.")
+            else:
+                try:
+                    resposta = supabase.auth.sign_in_with_password(
+                        {"email": email, "password": senha}
+                    )
+                    st.session_state["auth_user_email"] = resposta.user.email
+                    st.session_state["auth_access_token"] = resposta.session.access_token
+                    st.session_state["auth_refresh_token"] = resposta.session.refresh_token
+                    st.rerun()
+                except Exception:
+                    st.error("E-mail ou senha inválidos.")
+
+
+def logout():
+    try:
+        supabase.auth.sign_out()
+    except Exception:
+        pass
+    for chave in ["auth_user_email", "auth_access_token", "auth_refresh_token"]:
+        st.session_state.pop(chave, None)
+    st.rerun()
+
+
+if "auth_access_token" not in st.session_state:
+    tela_login()
+    st.stop()
+
+# Reaplica a sessão do usuário logado no cliente Supabase a cada execução.
+# Isso é necessário porque o cliente (init_supabase) é compartilhado entre
+# usuários via st.cache_resource — sem isso, o RLS baseado em "authenticated"
+# não saberia identificar quem está fazendo a requisição.
+try:
+    supabase.auth.set_session(
+        st.session_state["auth_access_token"],
+        st.session_state["auth_refresh_token"],
+    )
+except Exception:
+    for chave in ["auth_user_email", "auth_access_token", "auth_refresh_token"]:
+        st.session_state.pop(chave, None)
+    st.rerun()
+
 # --- GERAR DESCRIÇÃO COM IA (GEMINI) ---
 import time
 
@@ -507,6 +592,11 @@ with st.sidebar:
     st.divider()
     num_wsp_formatted = f"({CONFIG_EMPRESA['WHATSAPP_NUMERO'][2:4]}) {CONFIG_EMPRESA['WHATSAPP_NUMERO'][4:5]} {CONFIG_EMPRESA['WHATSAPP_NUMERO'][5:9]}-{CONFIG_EMPRESA['WHATSAPP_NUMERO'][9:]}"
     st.markdown(f"<p style='text-align: center; font-size: 0.9em; color: #94a3b8;'>📍 Passos - MG<br>📞 {num_wsp_formatted}</p>", unsafe_allow_html=True)
+
+    st.divider()
+    st.markdown(f"<p style='text-align: center; font-size: 0.85em; color: #cbd5e1;'>👤 {st.session_state.get('auth_user_email', '')}</p>", unsafe_allow_html=True)
+    if st.button("🚪 Sair", use_container_width=True):
+        logout()
 
 # ==========================================
 # 📊 ABA 1: DASHBOARD
