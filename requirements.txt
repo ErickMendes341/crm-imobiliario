@@ -4,3 +4,4 @@ supabase
 reportlab
 Pillow
 streamlit-drawable-canvas
+streamlit-cookies-controller
